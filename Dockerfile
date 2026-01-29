@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     iputils-ping \
     dnsutils \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
     
 # Copy the requirements file from the host to the container

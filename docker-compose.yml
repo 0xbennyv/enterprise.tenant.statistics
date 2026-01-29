@@ -1,11 +1,25 @@
-
 services:
-
   redis:
     image: redis:7
     command: redis-server --appendonly yes
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  postgres:
+    image: postgres:16
+    container_name: telemetry-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   api:
     build: .
     container_name: telemetry-api
@@ -18,11 +32,10 @@ services:
       - .env
     depends_on:
       - redis
+      - postgres
     dns:
       - 8.8.8.8
       - 1.1.1.1
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   worker:
     build: .
@@ -36,11 +49,11 @@ services:
       - .env
     depends_on:
       - redis
+      - postgres
     dns:
       - 8.8.8.8
       - 1.1.1.1
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
 volumes:
   redis_data:
+  postgres_data:
