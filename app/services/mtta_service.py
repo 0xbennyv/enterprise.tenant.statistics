@@ -1,15 +1,15 @@
-# app/services/telemetry/mttr_service.py
+# app/services/telemetry/mtta_service.py
 
 import asyncio
 import datetime
 from typing import Dict, Any
 
-from app.services.api_clients.org_api import OrgApiClient
-from app.services.api_clients.cases_api import CasesApiClient
-from app.services.telemetry.mttr_aggregator import MTTRAggregator
+from app.api.org_api import OrgApiClient
+from app.api.cases_api import CasesApiClient
+from app.aggregator.mtta_aggregator import MTTAAggregator
 
 
-class MTTRService:
+class MTTAService:
     def __init__(
         self,
         org_client: OrgApiClient,
@@ -18,7 +18,7 @@ class MTTRService:
         self.org_client = org_client
         self.cases_client = cases_client
 
-    async def collect_mttr(
+    async def collect_mtta(
             self,
             created_after: datetime,
             created_before: datetime,
@@ -50,7 +50,7 @@ class MTTRService:
                 tenant_id=tenant["id"],
                 created_after=created_after,
                 created_before=created_before,
-                status="resolved",
+                # IMPORTANT: no status filter
             )
 
         results = await asyncio.gather(
@@ -62,4 +62,4 @@ class MTTRService:
             for tenant_id, tenant_name, cases in results
         }
 
-        return MTTRAggregator.aggregate(cases_by_tenant)
+        return MTTAAggregator.aggregate(cases_by_tenant)

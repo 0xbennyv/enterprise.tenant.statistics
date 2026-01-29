@@ -1,4 +1,4 @@
-# app/services/telemetry/endpoint_health_aggregator.py
+# app/aggregator/endpoint_health_aggregator.py
 
 from typing import Dict, Any
 

@@ -1,8 +1,8 @@
-# app/services/api_clients/cases_api.py
+# app/api/cases_api.py
 
 from typing import List, Dict, Any
 from datetime import datetime
-from app.services.api_clients.base import BaseApiClient
+from app.api.base import BaseApiClient
 
 
 class CasesApiClient(BaseApiClient):

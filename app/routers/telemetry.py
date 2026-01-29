@@ -5,26 +5,27 @@ import os
 from fastapi import APIRouter, Query, Query
 from fastapi.responses import FileResponse
 from datetime import date, datetime, time, timezone
-from app.services.api_clients.alerts_api import AlertsApiClient
-from app.services.telemetry.alert_service import AlertTelemetryService
-from app.services.api_clients.cases_api import CasesApiClient
-from app.services.telemetry.case_service import CaseTelemetryService
-from app.services.token_manager import TokenManager
+from app.api.alerts_api import AlertsApiClient
+from app.services.alert_service import AlertTelemetryService
+from app.api.cases_api import CasesApiClient
+from app.services.case_service import CaseTelemetryService
+from app.api.oauth_api import TokenManager
 from app.core.constants import oauth_url, global_url
-from app.services.api_clients.org_api import OrgApiClient
-from app.services.api_clients.case_detections_api import CaseDetectionsApiClient
-from app.services.telemetry.mttd_service import MTTDService
-from app.services.telemetry.mtta_service import MTTAService
-from app.services.telemetry.mttr_service import MTTRService
-from app.services.api_clients.health_check_api import HealthCheckApiClient
-from app.services.telemetry.endpoint_health_service import EndpointHealthService
-from app.core.database import get_worker_db, get_db
+from app.api.org_api import OrgApiClient
+from app.api.case_detections_api import CaseDetectionsApiClient
+from app.services.mttd_service import MTTDService
+from app.services.mtta_service import MTTAService
+from app.services.mttr_service import MTTRService
+from app.api.health_check_api import HealthCheckApiClient
+from app.services.endpoint_health_service import EndpointHealthService
+from app.core.database import get_db
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import uuid4
-from app.core.queue import telemetry_queue
+from app.services.redis_queue import telemetry_queue, started, finished, failed, serialize_job
 from app.models.export_job import ExportJob
 from sqlalchemy import insert
+
 
 from app.services.export_job_service import update_job_status
 from app.workers.telemetry_export_sync import run_export_sync
@@ -80,8 +81,6 @@ async def alert_telemetry(
 async def cases_sla_telemetry(
     date_from: date = Query(...),
     date_to: date = Query(...)
-    # created_after: datetime = Query(...),
-    # created_before: datetime = Query(...),
 ):
     created_after = datetime.combine(
         date_from, time.min, tzinfo=timezone.utc
@@ -99,8 +98,6 @@ async def cases_sla_telemetry(
 async def mean_time_to_detect(
     date_from: date = Query(...),
     date_to: date = Query(...)
-    # created_after: datetime = Query(...),
-    # created_before: datetime = Query(...),
 ):
     created_after = datetime.combine(
         date_from, time.min, tzinfo=timezone.utc
@@ -116,8 +113,6 @@ async def mean_time_to_detect(
 async def mean_time_to_acknowledge(
     date_from: date = Query(...),
     date_to: date = Query(...)
-    # created_after: datetime = Query(...),
-    # created_before: datetime = Query(...),
 ):
     created_after = datetime.combine(
         date_from, time.min, tzinfo=timezone.utc
@@ -133,8 +128,6 @@ async def mean_time_to_acknowledge(
 async def mean_time_to_recover(
     date_from: date = Query(...),
     date_to: date = Query(...)
-    # created_after: datetime = Query(...),
-    # created_before: datetime = Query(...),
 ):
     created_after = datetime.combine(
         date_from, time.min, tzinfo=timezone.utc
@@ -150,76 +143,19 @@ async def mean_time_to_recover(
 async def endpoint_health():
     return await endpoint_health_service.collect_endpoint_health()
 
-# @router.get("/cases")
-# async def case_telemetry(
-#     created_after: datetime = Query(...),
-#     created_before: datetime = Query(...),
-# ):
-#     """
-#     Collects case telemetry between created_after and created_before.
-#     Returns Number of Cases Created and Number of Cases Resolved.
-#     """
-#     return await case_service.collect__metrics(
-#         created_after, created_before
-#     )
-
-# @router.get("/csv")
-# async def get_telemetry_csv():
-#     """
-#     Collects telemetry for last 30 days and returns a CSV file for download.
-#     """
-#     from_time, to_time = last_n_days_range(30)
-
-#     telemetry = await collect_telemetry(token_manager, from_time, to_time)
-#     csv_str = generate_telemetry_csv(telemetry)
-
-#     # Convert CSV string to bytes for StreamingResponse
-#     buffer = BytesIO()
-#     buffer.write(csv_str.encode("utf-8"))
-#     buffer.seek(0)
-
-#     return StreamingResponse(
-#         buffer,
-#         media_type="text/csv",
-#         headers={"Content-Disposition": "attachment; filename=telemetry.csv"}
-#     )
-
-# @router.get("/export")
-# async def export_telemetry(
-#     date_from: date = Query(...),
-#     date_to: date = Query(...),
-# ):
-#     service = TelemetryExportService(
-#         alert_service=alerts_service,
-#         case_sla_service=case_service,
-#         mttd_service=mttd_service,
-#         mtta_service=mtta_service,
-#         mttr_service=mttr_service,
-#         endpoint_health_service=endpoint_health_service,
-#     )
-#     # service = TelemetryExportService()
-#     content = await service.export(date_from, date_to)
-
-#     filename = f"{date_from}_to_{date_to}.xlsx"
-
-#     return StreamingResponse(
-#         iter([content]),
-#         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-#         headers={
-#             "Content-Disposition": f'attachment; filename="{filename}"'
-#         },
-#     )
-
 @router.post("/exports")
 async def export_telemetry(date_from: str, date_to: str, db: AsyncSession = Depends(get_db)):
     job_id = str(uuid4())
+
+    date_from_new = datetime.strptime(date_from, "%Y-%m-%d").date()
+    date_to_new = datetime.strptime(date_to, "%Y-%m-%d").date()
 
     # Insert job in DB
     await db.execute(
         insert(ExportJob).values(
             id=job_id,
-            date_from=date_from,
-            date_to=date_to,
+            date_from=date_from_new,
+            date_to=date_to_new,
             status="queued",
             progress={"stage": "queued"},
         )
@@ -251,6 +187,38 @@ async def get_exports(db: AsyncSession = Depends(get_db)):
         }
         for job in jobs
     ]
+
+@router.get("/exports/jobs/redis")
+async def get_export_jobs_in_redis():
+    """
+    Get all export jobs currently in the RQ queue.
+    """
+
+    all_jobs = []
+
+    # Jobs still in queue
+    for job in telemetry_queue.get_jobs():
+        all_jobs.append(serialize_job(job))
+
+    # Jobs currently running
+    for job_id in started.get_job_ids():
+        job = telemetry_queue.fetch_job(job_id)
+        all_jobs.append(serialize_job(job))
+
+    # Jobs finished
+    for job_id in finished.get_job_ids():
+        job = telemetry_queue.fetch_job(job_id)
+        all_jobs.append(serialize_job(job))
+
+    # Jobs failed
+    for job_id in failed.get_job_ids():
+        job = telemetry_queue.fetch_job(job_id)
+        all_jobs.append(serialize_job(job))
+
+    # Order by enqueued_at descending
+    all_jobs.sort(key=lambda x: x["enqueued_at"] or datetime.min, reverse=True)
+
+    return all_jobs
 
 
 # ---------- Get status of a job ----------

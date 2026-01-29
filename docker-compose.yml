@@ -44,7 +44,6 @@ services:
     container_name: telemetry-worker
     command: >
       rq worker telemetry
-      --worker-class rq.worker.SimpleWorker
     volumes:
       - .:/code
     env_file:

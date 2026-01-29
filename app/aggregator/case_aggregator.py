@@ -1,4 +1,4 @@
-# app/services/telemetry/case_aggregator.py
+# app/aggregator/case_aggregator.py
 
 from collections import Counter
 from datetime import datetime

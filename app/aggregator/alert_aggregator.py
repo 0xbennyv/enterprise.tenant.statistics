@@ -1,6 +1,6 @@
-# app/services/telemetry/alert_aggregator.py
+# app/aggregator/alert_aggregator.py
 
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime
 from typing import Dict, List, Any
 

@@ -2,8 +2,8 @@
 
 from typing import Any, Dict, Dict
 from fastapi import APIRouter
-from app.services.token_manager import TokenManager
-from app.services.api_clients.org_api import OrgApiClient
+from app.api.oauth_api import TokenManager
+from app.api.org_api import OrgApiClient
 from app.core.constants import oauth_url, global_url
 
 router = APIRouter()

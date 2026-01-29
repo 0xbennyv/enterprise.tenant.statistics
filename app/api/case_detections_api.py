@@ -1,9 +1,9 @@
-# app/services/api_clients/case_detections_api.py
+# app/api/case_detections_api.py
 
 from typing import List, Dict, Any
 import logging
 
-from app.services.api_clients.base import BaseApiClient
+from app.api.base import BaseApiClient
 
 logger = logging.getLogger(__name__)
 

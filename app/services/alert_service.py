@@ -2,11 +2,11 @@
 
 import asyncio
 from datetime import date
-from typing import Dict, List
+from typing import Dict
 
-from app.services.api_clients.alerts_api import AlertsApiClient
-from app.services.api_clients.org_api import OrgApiClient
-from app.services.telemetry.alert_aggregator import AlertTelemetryAggregator
+from app.api.alerts_api import AlertsApiClient
+from app.api.org_api import OrgApiClient
+from app.aggregator.alert_aggregator import AlertTelemetryAggregator
 
 
 class AlertTelemetryService:

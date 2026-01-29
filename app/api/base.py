@@ -1,15 +1,14 @@
-# app/services/api_clients/base.py
+# app/api/base.py
 
 import logging
 import time
 import httpx
 from typing import Dict, Any
-from app.services.token_manager import TokenManager
-from app.services.api_clients.exceptions import ApiClientError
+from app.api.oauth_api import TokenManager
 from app.core.http_client import create_async_http_client
-from app.core.retry import with_retries
+from app.utils.retry import with_retries
 
-logger = logging.getLogger("app.api_client")
+logger = logging.getLogger("app.api")
 
 class BaseApiClient:
     def __init__(self, token_manager: TokenManager):

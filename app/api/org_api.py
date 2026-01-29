@@ -1,8 +1,8 @@
-# app/services/api_clients/org_api.py
+# app/api/org_api.py
 
 from typing import List, Dict, Any
-from app.services.api_clients.base import BaseApiClient
-from app.services.token_manager import TokenManager
+from app.api.base import BaseApiClient
+from app.api.oauth_api import TokenManager
 
 class OrgApiClient(BaseApiClient):
     """

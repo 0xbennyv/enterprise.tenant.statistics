@@ -1,4 +1,4 @@
-# app/services/api_clients/exceptions.py
+# app/utils/exceptions.py
 
 class ApiClientError(Exception):
     def __init__(self, status_code: int, message: str = ""):

@@ -4,9 +4,9 @@ import asyncio
 from datetime import date, datetime
 from typing import Dict, Any
 
-from app.services.api_clients.org_api import OrgApiClient
-from app.services.api_clients.cases_api import CasesApiClient
-from app.services.telemetry.case_aggregator import CaseTelemetryAggregator
+from app.api.org_api import OrgApiClient
+from app.api.cases_api import CasesApiClient
+from app.aggregator.case_aggregator import CaseTelemetryAggregator
 
 
 class CaseTelemetryService:

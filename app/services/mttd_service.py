@@ -5,10 +5,10 @@ import datetime
 import logging
 from typing import Dict, Any, List
 
-from app.services.api_clients.org_api import OrgApiClient
-from app.services.api_clients.cases_api import CasesApiClient
-from app.services.api_clients.case_detections_api import CaseDetectionsApiClient
-from app.services.telemetry.mttd_aggregator import MTTDAggregator
+from app.api.org_api import OrgApiClient
+from app.api.cases_api import CasesApiClient
+from app.api.case_detections_api import CaseDetectionsApiClient
+from app.aggregator.mttd_aggregator import MTTDAggregator
 
 logger = logging.getLogger(__name__)
 
@@ -48,9 +48,9 @@ class MTTDService:
                     print("[MTTD] Processing case %s for tenant %s", case["id"], tenant["id"])
 
                     # FOR TESTING, LIMIT TO FIRST 5 CASES ONLY
-                    # if case_count >= 5:
-                    #     break
-                    # case_count += 1
+                    if case_count >= 5:
+                        break
+                    case_count += 1
                     
                     case_id = case["id"]
                     if not case_id:

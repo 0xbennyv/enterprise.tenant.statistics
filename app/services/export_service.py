@@ -1,15 +1,12 @@
 from datetime import date, datetime, time, timezone
 from pathlib import Path
-from io import BytesIO
 from openpyxl import Workbook
-
-from app.utils.helper import unique_sheet_title
-from app.services.telemetry.alert_service import AlertTelemetryService
-from app.services.telemetry.case_service import CaseTelemetryService
-from app.services.telemetry.mttd_service import MTTDService
-from app.services.telemetry.mtta_service import MTTAService
-from app.services.telemetry.mttr_service import MTTRService
-from app.services.telemetry.endpoint_health_service import EndpointHealthService
+from app.services.alert_service import AlertTelemetryService
+from app.services.case_service import CaseTelemetryService
+from app.services.mttd_service import MTTDService
+from app.services.mtta_service import MTTAService
+from app.services.mttr_service import MTTRService
+from app.services.endpoint_health_service import EndpointHealthService
 from app.exporters.excel.all_tenants_sheet import build_all_tenants_sheet
 from app.exporters.excel.tenant_sheet import build_tenant_sheet
 
@@ -52,7 +49,7 @@ class TelemetryExportService:
         Returns None if export was cancelled.
         """
 
-        # 1️⃣ Collect telemetry
+        # Collect telemetry
         await self.progress_cb({"stage": "collecting_alerts", "percent": 5})
         alerts = await self.alerts.collect(date_from, date_to)
         if await self.is_cancelled_cb():
@@ -91,7 +88,7 @@ class TelemetryExportService:
         if await self.is_cancelled_cb():
             return None
 
-        # 2️⃣ Create workbook
+        # Create workbook
         wb = Workbook()
         wb.remove(wb.active)
 
@@ -100,7 +97,7 @@ class TelemetryExportService:
         if await self.is_cancelled_cb():
             return None
 
-        # 3️⃣ Build per-tenant sheets
+        # Build per-tenant sheets
         total_tenants = len(alerts.get("incidents", {}))
         for idx, tenant in enumerate(alerts.get("incidents", {}), start=1):
             if await self.is_cancelled_cb():
@@ -110,7 +107,7 @@ class TelemetryExportService:
             )
             build_tenant_sheet(wb, tenant, alerts, sla, mttd, mtta, mttr, endpoint)
 
-        # 4️⃣ Save file
+        # Save file
         file_name = f"{date_from}_to_{date_to}.xlsx"
         file_path = EXPORT_DIR / file_name
 

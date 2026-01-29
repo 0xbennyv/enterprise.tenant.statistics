@@ -1,8 +1,8 @@
-# app/services/api_clients/health_check_api.py
+# app/api/health_check_api.py
 
 from typing import Dict, Any
-from app.services.api_clients.base import BaseApiClient
-from app.services.token_manager import TokenManager
+from app.api.base import BaseApiClient
+from app.api.oauth_api import TokenManager
 
 
 class HealthCheckApiClient(BaseApiClient):

@@ -2,9 +2,9 @@
 
 import asyncio
 from typing import Dict, Any
-from app.services.api_clients.org_api import OrgApiClient
-from app.services.api_clients.health_check_api import HealthCheckApiClient
-from app.services.telemetry.endpoint_health_aggregator import EndpointHealthAggregator
+from app.api.org_api import OrgApiClient
+from app.api.health_check_api import HealthCheckApiClient
+from app.aggregator.endpoint_health_aggregator import EndpointHealthAggregator
 
 
 class EndpointHealthService:
