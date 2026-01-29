@@ -2,20 +2,15 @@
 
 from http.client import HTTPException
 import os
-import os
 from fastapi import APIRouter, Query, Query
-from fastapi.responses import FileResponse, StreamingResponse
-from datetime import date, datetime, time, timedelta, timezone
-from io import BytesIO
-from app.services.telemetry_service import collect_telemetry
-from app.services.csv_exporter import generate_telemetry_csv
+from fastapi.responses import FileResponse
+from datetime import date, datetime, time, timezone
 from app.services.api_clients.alerts_api import AlertsApiClient
 from app.services.telemetry.alert_service import AlertTelemetryService
 from app.services.api_clients.cases_api import CasesApiClient
 from app.services.telemetry.case_service import CaseTelemetryService
 from app.services.token_manager import TokenManager
 from app.core.constants import oauth_url, global_url
-from app.utils.time import last_n_days_range
 from app.services.api_clients.org_api import OrgApiClient
 from app.services.api_clients.case_detections_api import CaseDetectionsApiClient
 from app.services.telemetry.mttd_service import MTTDService
@@ -23,14 +18,12 @@ from app.services.telemetry.mtta_service import MTTAService
 from app.services.telemetry.mttr_service import MTTRService
 from app.services.api_clients.health_check_api import HealthCheckApiClient
 from app.services.telemetry.endpoint_health_service import EndpointHealthService
-from app.services.telemetry.export_service import TelemetryExportService
 from app.core.database import get_worker_db, get_db
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import uuid4
 from app.core.queue import telemetry_queue
 from app.models.export_job import ExportJob
-from sqlalchemy.orm import Session
 from sqlalchemy import insert
 
 from app.services.export_job_service import update_job_status
@@ -271,6 +264,10 @@ async def cancel_export(job_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/exports/{job_id}/download")
 async def download_export(job_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Download the completed export file on the browser
+    or thru Postman
+    """
     result = await db.execute(
         ExportJob.__table__.select().where(ExportJob.id == job_id)
     )
@@ -283,4 +280,8 @@ async def download_export(job_id: str, db: AsyncSession = Depends(get_db)):
     if not file_path or not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="File not found")
 
-    return FileResponse(path=file_path, filename=os.path.basename(file_path))
+    return FileResponse(
+        path=file_path, 
+        filename=os.path.basename(file_path),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
