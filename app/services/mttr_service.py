@@ -1,4 +1,4 @@
-# app/services/telemetry/mttr_service.py
+# app/services/mttr_service.py
 
 import asyncio
 import datetime

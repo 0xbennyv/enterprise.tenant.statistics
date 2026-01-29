@@ -1,4 +1,4 @@
-# app/services/telemetry/alert_service.py
+# app/services/alert_service.py
 
 import asyncio
 from datetime import date

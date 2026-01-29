@@ -1,4 +1,4 @@
-# app/core/queue.py
+# app/services/redis_queue.py
 import os
 import redis
 from rq import Queue

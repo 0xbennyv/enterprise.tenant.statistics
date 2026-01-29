@@ -1,4 +1,4 @@
-# app/services/telemetry/endpoint_health_service.py
+# app/services/endpoint_health_service.py
 
 import asyncio
 from typing import Dict, Any

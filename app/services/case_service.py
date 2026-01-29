@@ -1,4 +1,4 @@
-# app/services/telemetry/case_service.py
+# app/services/case_service.py
 
 import asyncio
 from datetime import date, datetime
