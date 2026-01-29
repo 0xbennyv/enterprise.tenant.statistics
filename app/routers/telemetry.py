@@ -218,6 +218,8 @@ async def export_telemetry(date_from: str, date_to: str, db: AsyncSession = Depe
     await db.execute(
         insert(ExportJob).values(
             id=job_id,
+            date_from=date_from,
+            date_to=date_to,
             status="queued",
             progress={"stage": "queued"},
         )
@@ -228,6 +230,27 @@ async def export_telemetry(date_from: str, date_to: str, db: AsyncSession = Depe
     telemetry_queue.enqueue(run_export_sync, job_id, date_from, date_to)
 
     return {"job_id": job_id, "status": "queued"}
+
+@router.get("/exports")
+async def get_exports(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        ExportJob.__table__.select().order_by(ExportJob.created_at.desc())
+    )
+    jobs = result.all()
+
+    return [
+        {
+            "job_id": job._mapping["id"],
+            "date_from": job._mapping["date_from"],
+            "date_to": job._mapping["date_to"],
+            "status": job._mapping["status"],
+            "progress": job._mapping.get("progress"),
+            "file_path": job._mapping.get("file_path"),
+            "error": job._mapping.get("error"),
+            "created_at": job._mapping.get("created_at"),
+        }
+        for job in jobs
+    ]
 
 
 # ---------- Get status of a job ----------
@@ -244,6 +267,8 @@ async def get_export_status(job_id: str, db: AsyncSession = Depends(get_db)):
     job = job_row._mapping
     return {
         "job_id": job_id,
+        "date_from": job["date_from"],
+        "date_to": job["date_to"],
         "status": job["status"],
         "progress": job.get("progress"),
         "file_path": job.get("file_path"),
