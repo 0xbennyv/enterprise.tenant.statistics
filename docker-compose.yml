@@ -1,0 +1,46 @@
+
+services:
+
+  redis:
+    image: redis:7
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+  api:
+    build: .
+    container_name: telemetry-api
+    command: ["/bin/sh", "/code/start.sh"]
+    volumes:
+      - .:/code
+    ports:
+      - "5006:5006"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  worker:
+    build: .
+    container_name: telemetry-worker
+    command: >
+      rq worker telemetry
+      --worker-class rq.worker.SimpleWorker
+    volumes:
+      - .:/code
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  redis_data:
