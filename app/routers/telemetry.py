@@ -144,27 +144,38 @@ async def endpoint_health():
 
 @router.post("/exports")
 async def export_telemetry(date_from: str, date_to: str, db: AsyncSession = Depends(get_db)):
-    job_id = str(uuid4())
-
     date_from_new = datetime.strptime(date_from, "%Y-%m-%d").date()
     date_to_new = datetime.strptime(date_to, "%Y-%m-%d").date()
+
+    # Enqueue RQ job (sync wrapper handles async)
+    job = telemetry_queue.enqueue(
+        run_export_sync, 
+        date_from, 
+        date_to,
+        job_timeout=60 * 60 * 2,  # example: 2h
+        result_ttl=0,
+        failure_ttl=0,
+    )
 
     # Insert job in DB
     await db.execute(
         insert(ExportJob).values(
-            id=job_id,
+            job_id=job.id,
             date_from=date_from_new,
             date_to=date_to_new,
-            status="queued",
-            progress={"stage": "queued"},
+            status=job._status,
+            progress={
+                "stage": "queued",
+            },
         )
     )
     await db.commit()
 
-    # Enqueue RQ job (sync wrapper handles async)
-    telemetry_queue.enqueue(run_export_sync, job_id, date_from, date_to)
-
-    return {"job_id": job_id, "status": "queued"}
+    return {
+        # "id": job_id, 
+        "job_id": job.id,
+        "status": job._status,
+    }
 
 @router.get("/exports")
 async def get_exports(db: AsyncSession = Depends(get_db)):
@@ -175,7 +186,8 @@ async def get_exports(db: AsyncSession = Depends(get_db)):
 
     return [
         {
-            "job_id": job._mapping["id"],
+            "id": job._mapping["id"],
+            "job_id": job._mapping["job_id"],
             "date_from": job._mapping["date_from"],
             "date_to": job._mapping["date_to"],
             "status": job._mapping["status"],
@@ -224,7 +236,7 @@ async def get_export_jobs_in_redis():
 @router.get("/exports/{job_id}")
 async def get_export_status(job_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        ExportJob.__table__.select().where(ExportJob.id == job_id)
+        ExportJob.__table__.select().where(ExportJob.job_id == job_id)
     )
     job_row = result.first()
 
@@ -247,7 +259,7 @@ async def get_export_status(job_id: str, db: AsyncSession = Depends(get_db)):
 @router.post("/exports/{job_id}/cancel")
 async def cancel_export(job_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        ExportJob.__table__.select().where(ExportJob.id == job_id)
+        ExportJob.__table__.select().where(ExportJob.job_id == job_id)
     )
     job_row = result.first()
 
@@ -269,7 +281,7 @@ async def download_export(job_id: str, db: AsyncSession = Depends(get_db)):
     or thru Postman
     """
     result = await db.execute(
-        ExportJob.__table__.select().where(ExportJob.id == job_id)
+        ExportJob.__table__.select().where(ExportJob.job_id == job_id)
     )
     job_row = result.first()
 

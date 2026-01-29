@@ -1,5 +1,5 @@
 # app/models/export_job.py
-from sqlalchemy import Column, Date, String, DateTime, JSON
+from sqlalchemy import Column, Date, Integer, String, DateTime, JSON
 from app.core.database_sync import engine
 from sqlalchemy.orm import declarative_base
 from datetime import datetime
@@ -10,9 +10,10 @@ class ExportJob(Base):
     __tablename__ = "export_jobs"
     __table_args__ = {"extend_existing": True}
 
-    id = Column(String, primary_key=True)
-    date_from = Column(Date, nullable=False)
-    date_to = Column(Date, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    job_id = Column(String, unique=True, nullable=False)
+    date_from = Column(Date)
+    date_to = Column(Date)
     status = Column(String, nullable=False)
     progress = Column(JSON, nullable=True)
     file_path = Column(String, nullable=True)

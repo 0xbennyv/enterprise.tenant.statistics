@@ -1,5 +1,6 @@
 # app/main.py
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 import time
 import logging
@@ -10,12 +11,21 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 
 from app.routers import tenants, telemetry
+from app.workers.postgres_rq_sync import sync_postgres_to_rq
 
 # Initialize logging
 setup_logging()
 logger = logging.getLogger("app")
 
-app = FastAPI(title="Telemetry Collector")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # startup code
+    await sync_postgres_to_rq()
+    yield
+    # shutdown code (optional)
+    print("App shutting down")
+
+app = FastAPI(title="Telemetry Collector", lifespan=lifespan)
 app.description = "Backend service for collecting telemetry data."
 
 # Middleware to log API calls

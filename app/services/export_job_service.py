@@ -13,37 +13,6 @@ ALLOWED_TRANSITIONS = {
     "cancelled": [],
 }
 
-
-# async def update_job_status(
-#     db: AsyncSession,
-#     job_id: str,
-#     new_status: str,
-#     progress: dict = None,
-#     error: str = None,
-#     file_path: str = None,
-# ):
-#     """Safely update ExportJob status with allowed transitions."""
-#     result = await db.execute(ExportJob.__table__.select().where(ExportJob.id == job_id))
-#     job = result.first()
-#     if not job:
-#         return None
-
-#     current_status = job._mapping["status"]
-#     if new_status not in ALLOWED_TRANSITIONS[current_status]:
-#         raise ValueError(f"Invalid status transition: {current_status} → {new_status}")
-
-#     update_values = {"status": new_status}
-#     if progress:
-#         update_values["progress"] = progress
-#     if error:
-#         update_values["error"] = error
-#     if file_path:
-#         update_values["file_path"] = file_path
-
-#     await db.execute(ExportJob.__table__.update().where(ExportJob.id == job_id).values(**update_values))
-#     await db.commit()
-#     return update_values
-
 async def update_job_status(
     db: AsyncSession,
     job_id: str,
@@ -55,7 +24,7 @@ async def update_job_status(
 ):
     async with db.begin():
         result = await db.execute(
-            select(ExportJob).where(ExportJob.id == job_id)
+            select(ExportJob).where(ExportJob.job_id == job_id)
         )
         job = result.scalar_one_or_none()
 
@@ -78,15 +47,6 @@ async def update_job_status(
 
     return job
 
-# async def update_job_progress_only(db, job_id: str, progress: dict):
-#     """Update progress without touching status."""
-#     await db.execute(
-#         ExportJob.__table__.update()
-#         .where(ExportJob.id == job_id)
-#         .values(progress=progress)
-#     )
-#     await db.commit()
-
 async def update_job_progress_only(
     db: AsyncSession,
     job_id: str,
@@ -95,6 +55,6 @@ async def update_job_progress_only(
     async with db.begin():
         await db.execute(
             update(ExportJob)
-            .where(ExportJob.id == job_id)
+            .where(ExportJob.job_id == job_id)
             .values(progress=progress)
         )

@@ -43,7 +43,7 @@ services:
     build: .
     container_name: telemetry-worker
     command: >
-      rq worker telemetry
+      rq worker telemetry --with-scheduler --disable-job-desc-logging
     volumes:
       - .:/code
     env_file:

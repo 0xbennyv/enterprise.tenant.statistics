@@ -55,7 +55,7 @@ async def run_export(job_id: str, date_from: str, date_to: str):
 
         async with get_worker_db() as db:
             result = await db.execute(
-                ExportJob.__table__.select().where(ExportJob.id == job_id)
+                ExportJob.__table__.select().where(ExportJob.job_id == job_id)
             )
             job = result.first()
             return bool(job and job._mapping["status"] == "cancelling")
@@ -172,7 +172,7 @@ async def is_cancelled(job_id: str) -> bool:
 
     async with get_worker_db() as db:
         result = await db.execute(
-            ExportJob.__table__.select().where(ExportJob.id == job_id)
+            ExportJob.__table__.select().where(ExportJob.job_id == job_id)
         )
         job = result.first()
         return job and job._mapping.get("status") == "cancelling"

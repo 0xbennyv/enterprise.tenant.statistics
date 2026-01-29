@@ -25,9 +25,10 @@ import asyncio
 import logging
 
 from app.workers.telemetry_export import run_export
+from rq import get_current_job
 
 
-def run_export_sync(job_id: str, date_from: str, date_to: str):
+def run_export_sync(date_from: str, date_to: str):
     """
     Sync wrapper for RQ to run async export job.
     """
@@ -39,7 +40,9 @@ def run_export_sync(job_id: str, date_from: str, date_to: str):
         )
 
     try:
-        asyncio.run(run_export(job_id, date_from, date_to))
+        job = get_current_job()
+    
+        asyncio.run(run_export(job.id, date_from, date_to))
     except Exception:
-        logging.exception(f"Export job {job_id} failed")
+        logging.exception(f"Export job failed")
         raise
