@@ -1,8 +1,7 @@
 # app/routers/telemetry.py
 
-from http.client import HTTPException
 import os
-from fastapi import APIRouter, Query, Query
+from fastapi import APIRouter, Query, HTTPException
 from fastapi.responses import FileResponse
 from datetime import date, datetime, time, timezone
 from app.api.alerts_api import AlertsApiClient
@@ -231,7 +230,7 @@ async def get_export_status(job_id: str, db: AsyncSession = Depends(get_db)):
 
     if not job_row:
         raise HTTPException(status_code=404, detail="Job not found")
-
+    
     job = job_row._mapping
     return {
         "job_id": job_id,
@@ -247,6 +246,14 @@ async def get_export_status(job_id: str, db: AsyncSession = Depends(get_db)):
 # ---------- Cancel a running job ----------
 @router.post("/exports/{job_id}/cancel")
 async def cancel_export(job_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        ExportJob.__table__.select().where(ExportJob.id == job_id)
+    )
+    job_row = result.first()
+
+    if not job_row:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
     await update_job_status(
         db,
         job_id,
