@@ -2,17 +2,20 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+1. After cloning the repository and inside the project directory, go to the frontend folder
+    ```sh
+    cd frontend
+    ```
+2. Create an `.env` file (<i>Copy the .env.sample for reference</i>)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+3. Install node packages:
+    ```sh
+    npm install
+    ```
+4. Finally, run the development server:
+    ```sh
+    npm run dev
+    ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
