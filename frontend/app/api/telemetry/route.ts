@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET() {
   try {
     // Get backend URL from environment variable
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:5006";
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const endpoint = `${backendUrl}/exports`;
 
     // Forward the GET request to the external endpoint
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get backend URL from environment variable
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:5006";
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     
     // Build URL with query parameters
     const url = new URL(`${backendUrl}/exports`);

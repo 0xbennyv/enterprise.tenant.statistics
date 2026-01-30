@@ -18,7 +18,7 @@ export async function GET(
     const decodedJobId = decodeURIComponent(job_id);
 
     // Get backend URL from environment variable
-    const backendUrl = process.env.BACKEND_URL || "http://localhost:5006";
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
     const endpoint = `${backendUrl}/exports/${decodedJobId}/download`;
 
     // Forward the GET request to the external endpoint
