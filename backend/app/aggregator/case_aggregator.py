@@ -25,7 +25,7 @@ class CaseTelemetryAggregator:
             tenant_total = 0
 
             for case in cases:
-                print("Case:", case)
+                # print("Case:", case)
                 if case.get("status") != "resolved" or not case.get("resolvedAt"):
                     continue
 

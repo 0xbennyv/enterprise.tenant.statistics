@@ -28,7 +28,7 @@ class MTTRAggregator:
                 resolved_at = case.get("resolvedAt")
                 initial_detection = case.get("initialDetection", {})
                 detection_time = initial_detection.get("time")
-                print("Case ID:", case.get("id"), "Detection Time:", detection_time, "Resolved At:", resolved_at)
+                # print("Case ID:", case.get("id"), "Detection Time:", detection_time, "Resolved At:", resolved_at)
                 # if not created_at:
                 #     if not detection_time:
                 #         assigned_time = case.get("assignedAt")
@@ -41,9 +41,9 @@ class MTTRAggregator:
                             - MTTRAggregator._parse_time(detection_time)
                         ).total_seconds()
                     else:
-                        print("No detection time for case ID:", case.get("id"))
+                        # print("No detection time for case ID:", case.get("id"))
                         assigned_time = case.get("assignedAt")
-                        print("Assigned At:", assigned_time)
+                        # print("Assigned At:", assigned_time)
                         if assigned_time is not None:
                             delta = abs(
                                 MTTRAggregator._parse_time(assigned_time)
@@ -54,7 +54,7 @@ class MTTRAggregator:
 
                 if delta < 0:
                     continue
-                print("Delta:", delta)
+                # print("Delta:", delta)
                 tenant_total_seconds += delta
                 tenant_case_count += 1
                 global_total_seconds += delta

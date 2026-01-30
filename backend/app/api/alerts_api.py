@@ -29,10 +29,10 @@ class AlertsApiClient(BaseApiClient):
                 "page": page,
                 "pageTotal": "true",
             }
-            print("tenant_id:", tenant_id, "host:", api_host)
+            # print("tenant_id:", tenant_id, "host:", api_host)
             resp = await self.get(url, headers=headers, params=params)
             alerts.extend(resp.get("items", []))
-            print("fetched", len(resp.get("items", [])), "alerts for tenant", tenant_id, "page", page)
+            # print("fetched", len(resp.get("items", [])), "alerts for tenant", tenant_id, "page", page)
             pages = resp.get("pages", {})
             if page >= pages.get("total", 1):
                 break

@@ -28,7 +28,7 @@ class MTTAAggregator:
                 created_at = case.get("createdAt")
                 initial_detection = case.get("initialDetection", {})
                 detection_time = initial_detection.get("time")
-                print("Case ID:", case.get("id"), "Created At:", created_at, "Detection Time:", detection_time)
+                # print("Case ID:", case.get("id"), "Created At:", created_at, "Detection Time:", detection_time)
                 # if not created_at:
                 #     if not detection_time:
                 #         assigned_time = case.get("assignedAt")
@@ -41,9 +41,9 @@ class MTTAAggregator:
                             - MTTAAggregator._parse_time(detection_time)
                         ).total_seconds()
                     else:
-                        print("No detection time for case ID:", case.get("id"))
+                        # print("No detection time for case ID:", case.get("id"))
                         assigned_time = case.get("assignedAt")
-                        print("Assigned At:", assigned_time)
+                        # print("Assigned At:", assigned_time)
                         if assigned_time is not None:
                             delta = abs(
                                 MTTAAggregator._parse_time(assigned_time)

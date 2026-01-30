@@ -22,7 +22,7 @@ class MTTDAggregator:
             tenant_detection_count = len(detections)
             global_detection_count += tenant_detection_count
             
-            print("Processing tenant:", tenant_id, "with", tenant_detection_count, "detections")
+            # print("Processing tenant:", tenant_id, "with", tenant_detection_count, "detections")
 
             for detection in detections:
                 # print("Tenant ID:", tenant_id)

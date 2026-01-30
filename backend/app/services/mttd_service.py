@@ -45,7 +45,7 @@ class MTTDService:
 
                 case_count = 0
                 for case in cases:
-                    print("[MTTD] Processing case %s for tenant %s", case["id"], tenant["id"])
+                    # print("[MTTD] Processing case %s for tenant %s", case["id"], tenant["id"])
 
                     # FOR TESTING, LIMIT TO FIRST 5 CASES ONLY
                     # if case_count >= 5:
@@ -63,12 +63,12 @@ class MTTDService:
                             case_id=case_id,
                         )
 
-                        print(
-                            "[MTTD] Case %s (tenant=%s): detections fetched = %d",
-                            case_id,
-                            tenant["id"],
-                            len(case_detections) if "_error" not in case_detections else 0,
-                        )
+                        # print(
+                        #     "[MTTD] Case %s (tenant=%s): detections fetched = %d",
+                        #     case_id,
+                        #     tenant["id"],
+                        #     len(case_detections) if "_error" not in case_detections else 0,
+                        # )
                     
                         detections.extend(case_detections)
                     except Exception as exc:

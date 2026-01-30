@@ -37,7 +37,7 @@ class EndpointHealthAggregator:
                 # total += t.get("total", 0)
                 tamper_disabled = t.get("disabled", 0)
 
-                print("Tenant ID", tenant_id, "Not Protected:", not_protected, "Tamper Disabled:", tamper_disabled)
+                # print("Tenant ID", tenant_id, "Not Protected:", not_protected, "Tamper Disabled:", tamper_disabled)
                 
                 # unhealthy = (
                 #     not_protected
