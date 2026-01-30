@@ -30,6 +30,9 @@ async def update_job_status(
 
         if not job:
             return None
+        
+        if job.status == new_status:
+            return job
 
         if new_status not in ALLOWED_TRANSITIONS[job.status]:
             raise ValueError(

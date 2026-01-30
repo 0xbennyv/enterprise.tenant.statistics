@@ -143,6 +143,7 @@ async def run_export(job_id: str, date_from: str, date_to: str):
             job_id=job_id,
             status="completed",
             progress={"stage": "done", "percent": 100},
+            error=None,
             file_path=file_path,
         )
 

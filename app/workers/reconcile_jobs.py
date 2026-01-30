@@ -8,7 +8,6 @@ from app.workers.telemetry_export_sync import run_export_sync
 from sqlalchemy import select
 from rq.job import Job
 from rq.exceptions import NoSuchJobError
-from rq.registry import FailedJobRegistry
 
 logger = logging.getLogger("app.reconcile")
 
@@ -22,7 +21,7 @@ async def reconcile_jobs():
 
     async with get_worker_db() as db:
         result = await db.execute(
-            select(ExportJob).where(ExportJob.status.in_(["queued", "failed"]))
+            select(ExportJob).where(ExportJob.status.in_(["queued", "failed", "running"]))
         )
         queued_jobs = result.scalars().all()
 
@@ -31,21 +30,50 @@ async def reconcile_jobs():
                 # Check if the job already exists in RQ
                 fetched = Job.fetch(job.job_id, connection=redis_conn)
                 print(f"Job {job.job_id} already exists in RQ: ", fetched)
-                rq_status = fetched.get_status()
-                # Job exists and is already executing or queued
-                if rq_status in {"queued", "started"}:
-                    logger.info(
-                        "Job %s already in RQ with status=%s",
-                        fetched.id,
-                        rq_status,
-                    )
+
+                # Only requeue if job is truly failed in RQ
+                if fetched.id in failed.get_job_ids():
+                    logger.warning("Requeueing failed RQ job %s", fetched.id)
+                    # Update DB to reflect failure info
+                    job.status = "failed"
+                    job.error = fetched.exc_info or "RQ abandoned job"
+                    await db.commit()
+                    failed.requeue(fetched, at_front=True)
                     continue
 
-                # Job exists but failed → requeue explicitly
-                if rq_status == "failed":
-                    logger.warning("Requeueing failed RQ job %s", fetched.id)
-                    fetched.requeue()
-                    continue
+                # Job exists in RQ but is not failed
+                logger.info(
+                    "Job %s exists in RQ with status=%s, nothing to do",
+                    fetched.id,
+                    fetched.get_status(),
+                )
+
+                # rq_status = fetched.get_status()
+                
+                # if job.status == "running":
+                #     # Job exists and is already executing or queued
+                #     if rq_status in {"started", "queued"}:
+                #         logger.info(
+                #             "Job %s already running or queued in RQ with status=%s",
+                #             fetched.id,
+                #             rq_status,
+                #         )
+                #         continue
+                #     # Job exists but failed → requeue explicitly
+                #     if rq_status == "failed":
+                #         logger.warning("Requeueing failed RQ job %s", fetched.id)
+                #         fetched.requeue()
+                #         continue
+
+                # # Job exists but failed → requeue explicitly
+                # if rq_status == "failed":
+                #     logger.warning("Requeueing failed RQ job %s", fetched.id, job.status)
+                #     job.status = "failed"
+                #     job.error = fetched.exc_info or "RQ abandoned job"
+                #     await db.commit()
+                    
+                #     fetched.requeue()
+                #     continue
             except NoSuchJobError:
                 # Job missing entirely → enqueue fresh
                 logger.warning(

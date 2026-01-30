@@ -47,7 +47,7 @@ def requeue_started_jobs() -> int:
         # Only requeue if job is not actually running
         if job.get_status() == "started":
             logger.warning("Requeueing stuck started job %s", job.id)
-            job.requeue()
+            job.requeue(at_front=True)
             count += 1
 
     return count
@@ -65,7 +65,7 @@ def requeue_failed_jobs() -> int:
             continue
 
         logger.warning("Requeueing failed job %s", job.id)
-        job.requeue()
+        job.requeue(at_front=True)
         count += 1
 
     return count
