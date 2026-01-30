@@ -65,11 +65,11 @@ const DataTable = ({ data }: DataTableProps) => {
   });
 
   const handleDownload = async (jobId: string) => {
-    console.log('JOB ID', jobId);
     try {
       // URL encode the jobId to handle special characters
-      const encodedJobId = encodeURIComponent(jobId);
-      const response = await fetch(`/api/${encodedJobId}/download`, {
+      const job_id = encodeURIComponent(jobId);
+      // Call the API route instead of directly calling the backend
+      const response = await fetch(`/api/telemetry/${job_id}/download`, {
         method: "GET",
       });
 

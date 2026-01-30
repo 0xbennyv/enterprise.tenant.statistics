@@ -18,9 +18,10 @@ export async function GET(
     const decodedJobId = decodeURIComponent(job_id);
 
     // Get backend URL from environment variable
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-    const endpoint = `${backendUrl}/exports/${decodedJobId}/download`;
-
+    const backendUrl = process.env.NEXT_PUBLIC_DOWNLOAD_URL
+    const endpoint = `${backendUrl}/exports/${decodedJobId}/download`
+    console.log('TRIGGEREEEEEEDD', endpoint)
+    
     // Forward the GET request to the external endpoint
     const response = await fetch(endpoint, {
       method: "GET",

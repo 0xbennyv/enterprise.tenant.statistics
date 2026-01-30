@@ -4,7 +4,7 @@ export async function GET() {
   try {
     // Get backend URL from environment variable
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-    const endpoint = `${backendUrl}/exports`;
+    const endpoint = `${backendUrl}/exports/`;
 
     // Forward the GET request to the external endpoint
     const response = await fetch(endpoint, {

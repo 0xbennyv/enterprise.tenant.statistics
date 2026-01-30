@@ -48,9 +48,9 @@ class MTTDService:
                     print("[MTTD] Processing case %s for tenant %s", case["id"], tenant["id"])
 
                     # FOR TESTING, LIMIT TO FIRST 5 CASES ONLY
-                    # if case_count >= 5:
-                    #     break
-                    # case_count += 1
+                    if case_count >= 5:
+                        break
+                    case_count += 1
                     
                     case_id = case["id"]
                     if not case_id:
