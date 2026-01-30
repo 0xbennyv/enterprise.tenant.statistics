@@ -1,6 +1,9 @@
 # app/core/config.py
 
-from pydantic_settings import BaseSettings
+from pathlib import Path
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BASE_DIR = Path(__file__).resolve().parents[3]
 
 class Settings(BaseSettings):
     DB_HOST: str
@@ -18,7 +21,11 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "redis"
     REDIS_PORT: int = 6379
 
-    class Config:
-        env_file = ".env"
+    # class Config:
+    #     env_file = ".env"
+    model_config = SettingsConfigDict(
+        env_file=BASE_DIR / ".env",
+        env_file_encoding="utf-8",
+    )
 
 settings = Settings()

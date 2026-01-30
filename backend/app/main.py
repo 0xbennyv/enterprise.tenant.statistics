@@ -2,6 +2,7 @@
 
 import asyncio
 from contextlib import asynccontextmanager
+import contextlib
 from fastapi import FastAPI, Request
 import time
 import logging
@@ -30,8 +31,10 @@ async def lifespan(app: FastAPI):
             try:
                 await reconcile_jobs()
             except Exception as e:
-                print("Error in periodic reconciliation:", e)
-            await asyncio.sleep(RECONCILE_INTERVAL)
+                logger.exception("Error in periodic reconciliation", e)
+            await asyncio.wait_for(
+                stop_event.wait(), timeout=RECONCILE_INTERVAL
+            )
 
     # Start the background task
     task = asyncio.create_task(periodic_reconcile())
@@ -43,7 +46,9 @@ async def lifespan(app: FastAPI):
 
     # Shutdown: stop background task
     stop_event.set()
-    await task
+    task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await task
     print("App shutting down, periodic reconcile stopped")
 
 app = FastAPI(title="Telemetry Collector", lifespan=lifespan)
@@ -56,8 +61,10 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     process_time = (time.time() - start_time) * 1000  # ms
 
+    client = request.client.host if request.client else "unknown"
+
     logger.info(
-        f"{request.client.host} - {request.method} {request.url.path} "
+        f"{client} - {request.method} {request.url.path} "
         f"status={response.status_code} duration={process_time:.2f}ms"
     )
     return response
