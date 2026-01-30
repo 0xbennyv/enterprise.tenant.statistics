@@ -9,7 +9,6 @@
 # enterprise.tenant.statistics
 
 ## Setup
-- Create postgres database
 - Create ```.env``` file (check ```.env.sample``` for reference)
 - Run command: ```docker compose up --build```
 
