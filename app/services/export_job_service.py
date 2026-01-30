@@ -9,7 +9,7 @@ ALLOWED_TRANSITIONS = {
     "running": ["completed", "failed", "cancelling"],
     "cancelling": ["cancelled"],
     "completed": [],
-    "failed": [],
+    "failed": ["queued", "running"],
     "cancelled": [],
 }
 

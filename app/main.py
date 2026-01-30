@@ -1,5 +1,6 @@
 # app/main.py
 
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 import time
@@ -11,19 +12,39 @@ from app.core.config import settings
 from app.core.logging import setup_logging
 
 from app.routers import tenants, telemetry
-from app.workers.postgres_rq_sync import sync_postgres_to_rq
+from app.workers.reconcile_jobs import reconcile_jobs
 
 # Initialize logging
 setup_logging()
 logger = logging.getLogger("app")
 
+RECONCILE_INTERVAL = 3600 # run every hour
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # startup code
-    await sync_postgres_to_rq()
-    yield
-    # shutdown code (optional)
-    print("App shutting down")
+    stop_event = asyncio.Event()
+
+    # Periodic background task
+    async def periodic_reconcile():
+        while not stop_event.is_set():
+            try:
+                await reconcile_jobs()
+            except Exception as e:
+                print("Error in periodic reconciliation:", e)
+            await asyncio.sleep(RECONCILE_INTERVAL)
+
+    # Start the background task
+    task = asyncio.create_task(periodic_reconcile())
+
+    # Run initial reconciliation immediately
+    await reconcile_jobs()
+
+    yield  # FastAPI runs app here
+
+    # Shutdown: stop background task
+    stop_event.set()
+    await task
+    print("App shutting down, periodic reconcile stopped")
 
 app = FastAPI(title="Telemetry Collector", lifespan=lifespan)
 app.description = "Backend service for collecting telemetry data."

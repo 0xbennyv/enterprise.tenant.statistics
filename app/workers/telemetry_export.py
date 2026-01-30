@@ -1,12 +1,15 @@
 # app/workers/telemetry_export.py
 
 import traceback
+import logging
 from datetime import datetime
 from pathlib import Path
 
 from app.models.export_job import ExportJob
 from app.services.export_job_service import update_job_progress_only, update_job_status
 from app.services.export_service import TelemetryExportService
+
+logger = logging.getLogger("app.telemetry_export")
 
 EXPORT_DIR = Path("/code/exports")  # <-- Docker-mounted volume for persistence
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -144,17 +147,29 @@ async def run_export(job_id: str, date_from: str, date_to: str):
         )
 
         print(f"[EXPORT] Job {job_id} COMPLETED")
-
     except Exception as exc:
-        await set_status(
-            job_id=job_id,
-            status="failed",
-            progress={"stage": "failed"},
-            error=str(exc),
-        )
-        print(f"[EXPORT] Job {job_id} FAILED")
-        print(traceback.format_exc())
+        try:
+            await set_status(job_id, "failed", error=str(exc))
+        except ValueError:
+            # Job already failed — do not explode
+            logger.warning("Job %s already marked failed", job_id)
         raise
+    # except Exception as exc:
+    #     # Get current job status to avoid overwriting 'cancelled' state
+    #     from rq import get_current_job
+
+    #     job = get_current_job()
+
+    #     if not job.get_status() == "failed":
+    #         await set_status(
+    #             job_id=job_id,
+    #             status="failed",
+    #             progress={"stage": "failed"},
+    #             error=str(exc),
+    #         )
+    #     print(f"[EXPORT] Job {job_id} FAILED")
+    #     print(traceback.format_exc())
+    #     raise
 
 # Optional helper for updating progress
 async def update_progress(job_id: str, progress: dict):
