@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.logging import setup_logging
 
-from app.routers import tenants, telemetry
+from app.routers import tenants, telemetry, exports
 from app.workers.reconcile_jobs import reconcile_jobs
 
 # Initialize logging
@@ -76,3 +76,4 @@ async def health_check():
 # Include routers
 app.include_router(tenants.router, prefix="/tenants", tags=["tenants"])
 app.include_router(telemetry.router, prefix="/telemetry", tags=["telemetry"])
+app.include_router(exports.router, prefix="/exports", tags=["exports"])

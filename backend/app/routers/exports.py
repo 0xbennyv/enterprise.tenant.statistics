@@ -1,9 +1,9 @@
 # app/routers/telemetry.py
 
 import os
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
-from datetime import date, datetime, time, timezone
+from datetime import datetime
 from app.api.alerts_api import AlertsApiClient
 from app.services.alert_service import AlertTelemetryService
 from app.api.cases_api import CasesApiClient
@@ -31,118 +31,7 @@ from app.workers.telemetry_export_sync import run_export_sync
 
 router = APIRouter()
 
-token_manager = TokenManager(oauth_url, global_url)
-org_client = OrgApiClient(token_manager)
-# print("ORG CLIENT:", org_client)
-alerts_client = AlertsApiClient(token_manager)
-alerts_service = AlertTelemetryService(org_client, alerts_client)
-
-cases_client = CasesApiClient(token_manager)
-case_service = CaseTelemetryService(org_client, cases_client)
-
-detections_client = CaseDetectionsApiClient(token_manager)
-mttd_service = MTTDService(
-    org_client=org_client,
-    cases_client=cases_client,
-    detections_client=detections_client,
-)
-
-mtta_service = MTTAService(
-    org_client=org_client,
-    cases_client=cases_client,
-)
-
-mttr_service = MTTRService(
-    org_client=org_client,
-    cases_client=cases_client,
-)
-
-endpoint_health_client = HealthCheckApiClient(token_manager)
-
-endpoint_health_service = EndpointHealthService(
-    org_client=org_client,
-    endpoint_health_client=endpoint_health_client,
-)
-
-
-@router.get("/alerts")
-async def alert_telemetry(
-    date_from: date = Query(...),
-    date_to: date = Query(...)
-):
-    """
-    Collects alert telemetry between date_from and date_to.
-    Returns Number of Security Incidents.
-    """
-    return await alerts_service.collect(date_from, date_to)
-
-@router.get("/cases/sla")
-async def cases_sla_telemetry(
-    date_from: date = Query(...),
-    date_to: date = Query(...)
-):
-    created_after = datetime.combine(
-        date_from, time.min, tzinfo=timezone.utc
-    )
-
-    created_before = datetime.combine(
-        date_to, time.min, tzinfo=timezone.utc
-    )
-    
-    return await case_service.collect_sla_metrics(
-            created_after, created_before
-        )
-
-@router.get("/mttd")
-async def mean_time_to_detect(
-    date_from: date = Query(...),
-    date_to: date = Query(...)
-):
-    created_after = datetime.combine(
-        date_from, time.min, tzinfo=timezone.utc
-    )
-
-    created_before = datetime.combine(
-        date_to, time.min, tzinfo=timezone.utc
-    )
-
-    return await mttd_service.collect_mttd(created_after, created_before)
-
-@router.get("/mtta")
-async def mean_time_to_acknowledge(
-    date_from: date = Query(...),
-    date_to: date = Query(...)
-):
-    created_after = datetime.combine(
-        date_from, time.min, tzinfo=timezone.utc
-    )
-
-    created_before = datetime.combine(
-        date_to, time.min, tzinfo=timezone.utc
-    )
-
-    return await mtta_service.collect_mtta(created_after, created_before)
-
-@router.get("/mttr")
-async def mean_time_to_recover(
-    date_from: date = Query(...),
-    date_to: date = Query(...)
-):
-    created_after = datetime.combine(
-        date_from, time.min, tzinfo=timezone.utc
-    )
-
-    created_before = datetime.combine(
-        date_to, time.min, tzinfo=timezone.utc
-    )
-
-    return await mttr_service.collect_mttr(created_after, created_before)
-
-@router.get("/endpoint-health")
-async def endpoint_health():
-    return await endpoint_health_service.collect_endpoint_health()
-
-@router.post("/exports")
+@router.post("/")
 async def export_telemetry(date_from: str, date_to: str, db: AsyncSession = Depends(get_db)):
     date_from_new = datetime.strptime(date_from, "%Y-%m-%d").date()
     date_to_new = datetime.strptime(date_to, "%Y-%m-%d").date()
@@ -177,7 +66,7 @@ async def export_telemetry(date_from: str, date_to: str, db: AsyncSession = Depe
         "status": job._status,
     }
 
-@router.get("/exports")
+@router.get("/")
 async def get_exports(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         ExportJob.__table__.select().order_by(ExportJob.created_at.desc())
@@ -199,7 +88,7 @@ async def get_exports(db: AsyncSession = Depends(get_db)):
         for job in jobs
     ]
 
-@router.get("/exports/jobs/redis")
+@router.get("/jobs/redis")
 async def get_export_jobs_in_redis():
     """
     Get all export jobs currently in the RQ queue.
@@ -233,7 +122,7 @@ async def get_export_jobs_in_redis():
 
 
 # ---------- Get status of a job ----------
-@router.get("/exports/{job_id}")
+@router.get("/{job_id}")
 async def get_export_status(job_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         ExportJob.__table__.select().where(ExportJob.job_id == job_id)
@@ -256,7 +145,7 @@ async def get_export_status(job_id: str, db: AsyncSession = Depends(get_db)):
 
 
 # ---------- Cancel a running job ----------
-@router.post("/exports/{job_id}/cancel")
+@router.post("/{job_id}/cancel")
 async def cancel_export(job_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         ExportJob.__table__.select().where(ExportJob.job_id == job_id)
@@ -274,7 +163,7 @@ async def cancel_export(job_id: str, db: AsyncSession = Depends(get_db)):
     )
     return {"status": "cancelling"}
 
-@router.get("/exports/{job_id}/download")
+@router.get("/{job_id}/download")
 async def download_export(job_id: str, db: AsyncSession = Depends(get_db)):
     """
     Download the completed export file on the browser
@@ -297,3 +186,35 @@ async def download_export(job_id: str, db: AsyncSession = Depends(get_db)):
         filename=os.path.basename(file_path),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+@router.delete("/{job_id}")
+async def delete_export(job_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Delete the file and export metadata from the db
+    """
+    result = await db.execute(
+        ExportJob.__table__.select().where(ExportJob.job_id == job_id)
+    )
+    job_row = result.first()
+
+    if not job_row:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if job_row._mapping["status"] == "running":
+        raise HTTPException(status_code=404, detail="Could not delete running job")
+    
+    # Delete from rq
+    telemetry_queue.remove(job_row._mapping["job_id"])
+
+    # Delete file from path
+    file_path = job_row._mapping.get("file_path")
+    if file_path and os.path.exists(file_path):
+        os.remove(file_path)
+    
+    # Delete from database
+    await db.execute(
+        ExportJob.__table__.delete().where(ExportJob.job_id == job_id)
+    )
+    await db.commit()
+    
+    return {"status": "deleted"}

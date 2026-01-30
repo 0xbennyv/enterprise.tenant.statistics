@@ -1,4 +1,4 @@
-# app/services/token_manager.py
+# app/services/oauth_api.py
 
 import asyncio
 import logging
@@ -7,7 +7,7 @@ from typing import Optional
 import httpx
 from app.core.config import settings
 
-logger = logging.getLogger("app.token_manager")
+logger = logging.getLogger("app.oauth_api")
 
 class OAuthToken:
     def __init__(self, access_token: str, refresh_token: str, expires_in: int):
@@ -113,3 +113,35 @@ class TokenManager:
             resp = await client.get(url, headers=headers)
             resp.raise_for_status()
             return resp.json()
+        
+    async def get_tenants(self) -> list:
+        """
+        Fetches the list of tenants for the organization.
+        """
+        org_info = await self.get_org_info()
+        org_id = org_info["id"]
+        url = f"{self.global_url}/organization/v1/tenants"
+        headers = {"X-Organization-ID": org_id}
+        access_token = await self._token.access_token
+        headers["Authorization"] = f"Bearer {access_token}"
+
+        tenants = []
+        page = 1
+        while True:
+            params = {"page": page, "pageTotal": "true"}
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.get(url, headers=headers, params=params)
+                resp.raise_for_status()
+                json_data = resp.json()
+
+            tenants.extend(json_data.get("items", []))
+
+            pages_total = json_data.get("pages", {}).get("total", 1)
+            if page >= pages_total:
+                break
+
+            # FOR TESTING, LIMIT TO FIRST PAGE ONLY
+            page += 1
+            # page = pages_total  # Fetch only first page
+
+        return tenants
