@@ -1,0 +1,240 @@
+@import "tailwindcss";
+@import "./theme.css";
+
+@layer components {
+  .card-container {
+    @apply bg-white rounded-md;
+
+    header {
+      @apply text-h3 text-sophos-blue capitalize px-6 py-8 border-b border-gray-200;
+    }
+
+    .card-container-body {
+      @apply p-6 py-8 flex flex-col gap-y-6;
+    }
+
+    footer {
+      @apply px-6 py-8 border-t border-gray-200;
+    }
+  }
+
+  .card-section {
+    @apply bg-gray-50 px-6 py-4.5 border border-gray-200 rounded-md;
+
+    h3 {
+      @apply text-h4;
+    }
+
+    .card-section-body {
+      @apply mt-4.5 flex flex-col gap-y-4.5;
+    }
+
+    .card-section-content {
+      @apply flex-1 flex flex-col gap-y-4.5;
+    }
+  }
+
+  .input {
+    @apply flex-1 flex flex-col justify-center gap-y-1 w-full min-h-11;
+
+    .input-inner {
+      @apply px-3 py-1.5 border-2 border-gray-200 rounded-md relative bg-white;
+
+      input {
+        @apply border-0 outline-none;
+      }
+
+      .svg {
+        @apply absolute -top-2 -right-2 z-10 bg-white rounded-full;
+      }
+    }
+
+    &.error {
+      @apply border-2 border-orange-500;
+    }
+
+    p {
+      @apply text-orange-500 text-ps;
+    }
+  }
+
+  .input-inner:focus-within {
+    @apply border-2 border-sophos-blue;
+  }
+
+  .product-card {
+    @apply flex flex-col;
+
+    header {
+      @apply text-inherit min-h-60;
+    }
+
+    .product-card-body {
+      @apply w-full px-6 py-6 flex flex-col justify-center gap-4;
+    }
+
+    .product-card-item {
+      @apply w-full flex items-baseline justify-between gap-5;
+
+      span {
+        @apply text-xs font-semibold;
+      }
+    }
+
+    .product-card-icon {
+      @apply h-4 w-4 pt-4;
+    }
+
+    .product-card-success {
+      @apply h-4 w-4 mt-auto pb-7;
+    }
+
+    .product-card-footer {
+      @apply flex w-full;
+    }
+  }
+
+  input:focus {
+    @apply border-0 outline-none;
+  }
+
+  label {
+    @apply text-list font-medium;
+
+    span {
+      @apply text-ps text-gray-450;
+    }
+  }
+
+  .dropdown {
+    @apply flex flex-col gap-y-1;
+
+    .dropdown__control {
+      @apply border-2 border-gray-200 rounded-md px-3 py-1.5 text-gray-450;
+
+      &:focus-within {
+        @apply border-2 border-sophos-blue;
+      }
+    }
+
+    .dropdown__menu {
+      @apply bg-white mt-0.5 py-1 rounded-md shadow-card-light;
+    }
+
+    .dropdown__option {
+      @apply px-3 py-1.5 text-list font-normal;
+
+      &:hover {
+        @apply bg-gray-100;
+      }
+    }
+
+    .dropdown__single-value {
+      @apply text-black;
+    }
+  }
+
+  /* Date Picker Styles */
+  .react-datepicker-wrapper {
+    @apply w-full;
+  }
+
+  .react-datepicker__input-container {
+    @apply w-full;
+  }
+
+  .react-datepicker__input-container input {
+    @apply w-full border-0 outline-none bg-transparent text-list;
+  }
+
+  .react-datepicker-popper {
+    @apply z-50;
+  }
+
+  .react-datepicker {
+    @apply border-2 border-gray-200 rounded-md shadow-card-light;
+  }
+
+  .react-datepicker__header {
+    @apply bg-white border-b border-gray-200 rounded-t-md;
+  }
+
+  .react-datepicker__current-month {
+    @apply text-list font-semibold text-gray-900;
+  }
+
+  .react-datepicker__day-name {
+    @apply text-ps font-medium text-gray-600;
+  }
+
+  .react-datepicker__day {
+    @apply text-list text-gray-900;
+  }
+
+  .react-datepicker__day--selected,
+  .react-datepicker__day--keyboard-selected {
+    @apply bg-sophos-blue text-white rounded-md;
+  }
+
+  .react-datepicker__day:hover {
+    @apply bg-blue-100 rounded-md;
+  }
+
+  /* Data Table Styles */
+  .data-table {
+    @apply bg-white rounded-md overflow-hidden;
+  }
+
+  .data-table table {
+    @apply w-full;
+    border: 1px solid #E5E7EB;
+  }
+
+  .data-table thead {
+    @apply bg-white;
+    font-size: medium;
+  }
+
+  .data-table tbody tr {
+    @apply transition-colors;
+  }
+
+  .data-table tbody tr:hover {
+    @apply bg-gray-50;
+  }
+
+  .data-table tbody td {
+    font-size: small;
+    line-height: 1.25rem;
+    padding: 12px 16px;
+    border-bottom: 1px solid #E5E7EB;
+    text-align: left;
+    vertical-align: middle;
+    white-space: nowrap;
+  }
+
+  /* Toast Styles */
+  .toast-container {
+    @apply z-50;
+  }
+
+  .Toastify__toast {
+    @apply rounded-md shadow-card-light;
+  }
+
+  .Toastify__toast--success {
+    @apply bg-green-500 text-white;
+  }
+
+  .Toastify__toast--error {
+    @apply bg-orange-500 text-white;
+  }
+
+  .Toastify__toast-body {
+    @apply text-list font-medium;
+  }
+
+  .Toastify__close-button {
+    @apply text-white opacity-75 hover:opacity-100;
+  }
+}
