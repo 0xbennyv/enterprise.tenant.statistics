@@ -141,7 +141,7 @@ class TokenManager:
                 break
 
             # FOR TESTING, LIMIT TO FIRST PAGE ONLY
-            page += 1
-            # page = pages_total  # Fetch only first page
+            # page += 1
+            page = pages_total  # Fetch only first page
 
         return tenants
