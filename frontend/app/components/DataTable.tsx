@@ -318,7 +318,7 @@ const DataTable = ({ data }: DataTableProps) => {
                 className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
               >
                 <td className="py-4 px-6">{row.jobId}</td>
-                <td className="py-4 px-6 ">{row.createdAt}</td>
+                <td className="py-4 px-6 ">{row.createdAt} (UTC)</td>
                 <td className="py-4 px-6">
                   <span
                     className={`inline-block px-3 py-1 rounded-full text-ps font-semibold ${getStatusBadgeClass(
