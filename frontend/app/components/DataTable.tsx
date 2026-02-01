@@ -65,17 +65,20 @@ const DataTable = ({ data }: DataTableProps) => {
   });
 
   const handleDownload = async (jobId: string) => {
-    console.log('JOB ID', jobId);
     try {
-      // URL encode the jobId to handle special characters
-      const encodedJobId = encodeURIComponent(jobId);
-      const response = await fetch(`/api/${encodedJobId}/download`, {
+      // Get backend URL from environment variable or use localhost for development
+      const backendUrl = process.env.NEXT_PUBLIC_DOWNLOAD_URL;
+
+      // Call the backend directly: http://localhost:5006/exports/{job_id}/download
+      const endpoint = `${backendUrl}/exports/${encodeURIComponent(jobId)}/download`;
+
+      const response = await fetch(endpoint, {
         method: "GET",
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to download file");
+        throw new Error(errorData.detail || errorData.error || "Failed to download file");
       }
 
       // Get the blob from the response
@@ -103,6 +106,8 @@ const DataTable = ({ data }: DataTableProps) => {
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+
+      toast.success("File downloaded successfully");
     } catch (error) {
       console.error("Download error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to download file");
