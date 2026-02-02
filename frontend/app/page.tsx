@@ -24,6 +24,8 @@ type TableData = {
   createdAt: string;
   status: string;
   downloadUrl?: string;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
 const formatDate = (dateString: string): string => {
@@ -64,6 +66,8 @@ export default function Home() {
           createdAt: formatDate(item.created_at),
           status: item.status,
           downloadUrl: item.file_path || undefined,
+          dateFrom: item.date_from,
+          dateTo: item.date_to,
         })
       );
 
