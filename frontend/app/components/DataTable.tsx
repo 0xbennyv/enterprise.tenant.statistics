@@ -8,6 +8,8 @@ type TableData = {
   createdAt: string;
   status: string;
   downloadUrl?: string;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
 type SortConfig = {
@@ -64,13 +66,13 @@ const DataTable = ({ data }: DataTableProps) => {
     }
   });
 
-  const handleDownload = async (jobId: string) => {
+  const handleDownload = async (row: TableData) => {
     try {
       // Get backend URL from environment variable or use localhost for development
       const backendUrl = process.env.NEXT_PUBLIC_DOWNLOAD_URL;
 
       // Call the backend directly: http://localhost:5006/exports/{job_id}/download
-      const endpoint = `${backendUrl}/exports/${encodeURIComponent(jobId)}/download`;
+      const endpoint = `${backendUrl}/exports/${encodeURIComponent(row.jobId)}/download`;
 
       const response = await fetch(endpoint, {
         method: "GET",
@@ -84,14 +86,26 @@ const DataTable = ({ data }: DataTableProps) => {
       // Get the blob from the response
       const blob = await response.blob();
 
-      // Get filename from Content-Disposition header or use default
+      // Generate filename using date_from and date_to if available
+      let filename = `export-${row.jobId}.xlsx`;
+      if (row.dateFrom && row.dateTo) {
+        // Format dates as YYYY-MM-DD for filename
+        const dateFrom = row.dateFrom.replace(/-/g, '');
+        const dateTo = row.dateTo.replace(/-/g, '');
+        filename = `export_${dateFrom}_to_${dateTo}.xlsx`;
+      }
+
+      // Override with filename from Content-Disposition header if present
       const contentDisposition = response.headers.get("content-disposition");
-      let filename = `export-${jobId}.xlsx`;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename=["']?([^"';]+)["']?/i);
         if (filenameMatch) {
           // Remove trailing underscores from file extension (e.g., .xlsx_ -> .xlsx)
-          filename = filenameMatch[1].trim().replace(/(\.[a-zA-Z0-9]+)_+$/i, '$1');
+          const headerFilename = filenameMatch[1].trim().replace(/(\.[a-zA-Z0-9]+)_+$/i, '$1');
+          // Only use header filename if dates are not available
+          if (!row.dateFrom || !row.dateTo) {
+            filename = headerFilename;
+          }
         }
       }
 
@@ -330,7 +344,7 @@ const DataTable = ({ data }: DataTableProps) => {
                 </td>
                 <td className="py-4 px-6">
                   <button
-                    onClick={() => handleDownload(row.jobId)}
+                    onClick={() => handleDownload(row)}
                     disabled={!isCompleted(row.status)}
                     className={`font-medium text-list transition-colors ${isCompleted(row.status)
                       ? "text-sophos-blue hover:text-blue-600 cursor-pointer"
