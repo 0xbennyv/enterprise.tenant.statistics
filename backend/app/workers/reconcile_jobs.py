@@ -47,33 +47,6 @@ async def reconcile_jobs():
                     fetched.id,
                     fetched.get_status(),
                 )
-
-                # rq_status = fetched.get_status()
-                
-                # if job.status == "running":
-                #     # Job exists and is already executing or queued
-                #     if rq_status in {"started", "queued"}:
-                #         logger.info(
-                #             "Job %s already running or queued in RQ with status=%s",
-                #             fetched.id,
-                #             rq_status,
-                #         )
-                #         continue
-                #     # Job exists but failed → requeue explicitly
-                #     if rq_status == "failed":
-                #         logger.warning("Requeueing failed RQ job %s", fetched.id)
-                #         fetched.requeue()
-                #         continue
-
-                # # Job exists but failed → requeue explicitly
-                # if rq_status == "failed":
-                #     logger.warning("Requeueing failed RQ job %s", fetched.id, job.status)
-                #     job.status = "failed"
-                #     job.error = fetched.exc_info or "RQ abandoned job"
-                #     await db.commit()
-                    
-                #     fetched.requeue()
-                #     continue
             except NoSuchJobError:
                 # Job missing entirely → enqueue fresh
                 logger.warning(

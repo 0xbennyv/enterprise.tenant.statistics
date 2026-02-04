@@ -1,6 +1,7 @@
 # app/routers/telemetry.py
 
 import os
+from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from datetime import datetime
@@ -190,8 +191,10 @@ async def download_export(job_id: str, db: AsyncSession = Depends(get_db)):
 @router.delete("/{job_id}")
 async def delete_export(job_id: str, db: AsyncSession = Depends(get_db)):
     """
-    Delete the file and export metadata from the db
+    Delete the file and export metadata from the db.
+    Works both locally and inside Docker if paths are correctly mounted.
     """
+    # Fetch job
     result = await db.execute(
         ExportJob.__table__.select().where(ExportJob.job_id == job_id)
     )
@@ -199,22 +202,33 @@ async def delete_export(job_id: str, db: AsyncSession = Depends(get_db)):
 
     if not job_row:
         raise HTTPException(status_code=404, detail="Job not found")
-    
-    if job_row._mapping["status"] == "running":
-        raise HTTPException(status_code=404, detail="Could not delete running job")
-    
-    # Delete from rq
-    telemetry_queue.remove(job_row._mapping["job_id"])
 
-    # Delete file from path
+    if job_row._mapping["status"] == "running":
+        raise HTTPException(status_code=400, detail="Cannot delete a running job")
+
+    # Delete from RQ queue
+    try:
+        telemetry_queue.remove(job_row._mapping["job_id"])
+    except Exception:
+        # Queue might not have it, ignore safely
+        pass
+
+    # Delete file
     file_path = job_row._mapping.get("file_path")
-    if file_path and os.path.exists(file_path):
-        os.remove(file_path)
-    
-    # Delete from database
+    if file_path:
+        path = Path(file_path)
+        if path.exists():
+            try:
+                path.unlink()  # safer than os.remove
+            except PermissionError:
+                raise HTTPException(status_code=500, detail="Permission denied deleting file")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Error deleting file: {str(e)}")
+
+    # Delete from DB
     await db.execute(
         ExportJob.__table__.delete().where(ExportJob.job_id == job_id)
     )
     await db.commit()
-    
+
     return {"status": "deleted"}

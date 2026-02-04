@@ -5,6 +5,10 @@ import logging
 from rq import Queue
 from rq.registry import StartedJobRegistry, FinishedJobRegistry, FailedJobRegistry
 from rq.job import Job
+from sqlalchemy import select
+
+from app.core.database import get_worker_db
+from app.models.export_job import ExportJob
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +39,7 @@ failed = FailedJobRegistry(queue=telemetry_queue)
 def requeue_started_jobs() -> int:
     """
     Requeue jobs that were marked as 'started' but whose worker died.
-    Safe to call repeatedly.
+    Job IDs are preserved. DB is updated to 'queued'.
     """
     count = 0
 
@@ -44,18 +48,31 @@ def requeue_started_jobs() -> int:
         if not job:
             continue
 
-        # Only requeue if job is not actually running
         if job.get_status() == "started":
             logger.warning("Requeueing stuck started job %s", job.id)
             job.requeue(at_front=True)
             count += 1
+
+            # Update DB status safely
+            import asyncio
+            async def update_db():
+                async with get_worker_db() as db:
+                    result = await db.execute(
+                        select(ExportJob).where(ExportJob.job_id == job.id)
+                    )
+                    export_job = result.scalar_one_or_none()
+                    if export_job:
+                        export_job.status = "queued"
+                        export_job.error = None
+                        await db.commit()
+            asyncio.create_task(update_db())
 
     return count
 
 
 def requeue_failed_jobs() -> int:
     """
-    Requeue failed jobs explicitly.
+    Requeue jobs in FailedJobRegistry. Job IDs are preserved. DB is updated to 'queued'.
     """
     count = 0
 
@@ -64,9 +81,24 @@ def requeue_failed_jobs() -> int:
         if not job:
             continue
 
-        logger.warning("Requeueing failed job %s", job.id)
-        job.requeue(at_front=True)
-        count += 1
+        if job.get_status() == "failed":
+            logger.warning("Requeueing failed job %s", job.id)
+            job.requeue(at_front=True)
+            count += 1
+
+            # Update DB status safely
+            import asyncio
+            async def update_db():
+                async with get_worker_db() as db:
+                    result = await db.execute(
+                        select(ExportJob).where(ExportJob.job_id == job.id)
+                    )
+                    export_job = result.scalar_one_or_none()
+                    if export_job:
+                        export_job.status = "queued"
+                        export_job.error = None
+                        await db.commit()
+            asyncio.create_task(update_db())
 
     return count
 
