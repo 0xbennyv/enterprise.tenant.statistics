@@ -8,6 +8,8 @@ type TableData = {
   createdAt: string;
   status: string;
   downloadUrl?: string;
+  dateFrom?: string;
+  dateTo?: string;
 };
 
 type SortConfig = {
@@ -64,31 +66,46 @@ const DataTable = ({ data }: DataTableProps) => {
     }
   });
 
-  const handleDownload = async (jobId: string) => {
-    console.log('JOB ID', jobId);
+  const handleDownload = async (row: TableData) => {
     try {
-      // URL encode the jobId to handle special characters
-      const encodedJobId = encodeURIComponent(jobId);
-      const response = await fetch(`/api/${encodedJobId}/download`, {
+      // Get backend URL from environment variable or use localhost for development
+      const backendUrl = process.env.NEXT_PUBLIC_DOWNLOAD_URL;
+
+      // Call the backend directly: http://localhost:5006/exports/{job_id}/download
+      const endpoint = `${backendUrl}/exports/${encodeURIComponent(row.jobId)}/download`;
+
+      const response = await fetch(endpoint, {
         method: "GET",
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to download file");
+        throw new Error(errorData.detail || errorData.error || "Failed to download file");
       }
 
       // Get the blob from the response
       const blob = await response.blob();
 
-      // Get filename from Content-Disposition header or use default
+      // Generate filename using date_from and date_to if available
+      let filename = `export-${row.jobId}.xlsx`;
+      if (row.dateFrom && row.dateTo) {
+        // Format dates as YYYY-MM-DD for filename
+        const dateFrom = row.dateFrom.replace(/-/g, '');
+        const dateTo = row.dateTo.replace(/-/g, '');
+        filename = `export_${dateFrom}_to_${dateTo}.xlsx`;
+      }
+
+      // Override with filename from Content-Disposition header if present
       const contentDisposition = response.headers.get("content-disposition");
-      let filename = `export-${jobId}.xlsx`;
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename=["']?([^"';]+)["']?/i);
         if (filenameMatch) {
           // Remove trailing underscores from file extension (e.g., .xlsx_ -> .xlsx)
-          filename = filenameMatch[1].trim().replace(/(\.[a-zA-Z0-9]+)_+$/i, '$1');
+          const headerFilename = filenameMatch[1].trim().replace(/(\.[a-zA-Z0-9]+)_+$/i, '$1');
+          // Only use header filename if dates are not available
+          if (!row.dateFrom || !row.dateTo) {
+            filename = headerFilename;
+          }
         }
       }
 
@@ -103,6 +120,8 @@ const DataTable = ({ data }: DataTableProps) => {
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+
+      toast.success("File downloaded successfully");
     } catch (error) {
       console.error("Download error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to download file");
@@ -313,7 +332,7 @@ const DataTable = ({ data }: DataTableProps) => {
                 className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
               >
                 <td className="py-4 px-6">{row.jobId}</td>
-                <td className="py-4 px-6 ">{row.createdAt}</td>
+                <td className="py-4 px-6 ">{row.createdAt} (UTC)</td>
                 <td className="py-4 px-6">
                   <span
                     className={`inline-block px-3 py-1 rounded-full text-ps font-semibold ${getStatusBadgeClass(
@@ -325,7 +344,7 @@ const DataTable = ({ data }: DataTableProps) => {
                 </td>
                 <td className="py-4 px-6">
                   <button
-                    onClick={() => handleDownload(row.jobId)}
+                    onClick={() => handleDownload(row)}
                     disabled={!isCompleted(row.status)}
                     className={`font-medium text-list transition-colors ${isCompleted(row.status)
                       ? "text-sophos-blue hover:text-blue-600 cursor-pointer"

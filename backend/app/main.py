@@ -4,6 +4,7 @@ import asyncio
 from contextlib import asynccontextmanager
 import contextlib
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 import time
 import logging
 import sys
@@ -53,6 +54,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Telemetry Collector", lifespan=lifespan)
 app.description = "Backend service for collecting telemetry data."
+
+# CORS middleware to allow requests from frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3001",
+        "http://localhost:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:3000",
+    ],
+    # allow_credentials=True,
+    # allow_methods=["*"],
+    # allow_headers=["*"],
+)
 
 # Middleware to log API calls
 @app.middleware("http")
