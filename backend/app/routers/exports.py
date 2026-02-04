@@ -1,4 +1,4 @@
-# app/routers/telemetry.py
+# app/routers/exports.py
 
 import os
 from pathlib import Path
@@ -24,11 +24,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import uuid4
 from app.services.redis_queue import telemetry_queue, started, finished, failed, serialize_job
 from app.models.export_job import ExportJob
-from sqlalchemy import insert
-
+from sqlalchemy import insert, select
+import logging
 
 from app.services.export_job_service import update_job_status
 from app.workers.telemetry_export_sync import run_export_sync
+
+logger = logging.getLogger("app.exports")
 
 router = APIRouter()
 
@@ -36,6 +38,16 @@ router = APIRouter()
 async def export_telemetry(date_from: str, date_to: str, db: AsyncSession = Depends(get_db)):
     date_from_new = datetime.strptime(date_from, "%Y-%m-%d").date()
     date_to_new = datetime.strptime(date_to, "%Y-%m-%d").date()
+
+    # Check if there is already a record with same date_from and date_to
+    exists = await db.execute(
+        ExportJob.__table__.select().where(
+            ExportJob.date_from == date_from_new,
+            ExportJob.date_to == date_to_new
+        )
+    )
+    if exists.first():
+        raise HTTPException(status_code=404, detail="Job already exists")
 
     # Enqueue RQ job (sync wrapper handles async)
     job = telemetry_queue.enqueue(
@@ -91,33 +103,44 @@ async def get_exports(db: AsyncSession = Depends(get_db)):
 
 @router.get("/jobs/redis")
 async def get_export_jobs_in_redis():
-    """
-    Get all export jobs currently in the RQ queue.
-    """
-
     all_jobs = []
 
-    # Jobs still in queue
+    # 1. Jobs still in queue (safe)
     for job in telemetry_queue.get_jobs():
         all_jobs.append(serialize_job(job))
 
-    # Jobs currently running
-    for job_id in started.get_job_ids():
-        job = telemetry_queue.fetch_job(job_id)
-        all_jobs.append(serialize_job(job))
+    # 2. Started jobs (UNSAFE without guard)
+    try:
+        for job_id in started.get_job_ids():
+            job = telemetry_queue.fetch_job(job_id)
+            if job:
+                all_jobs.append(serialize_job(job))
+    except ValueError as e:
+        logger.warning("Skipping corrupt started job execution: %s", e)
 
-    # Jobs finished
-    for job_id in finished.get_job_ids():
-        job = telemetry_queue.fetch_job(job_id)
-        all_jobs.append(serialize_job(job))
+    # 3. Finished jobs
+    try:
+        for job_id in finished.get_job_ids():
+            job = telemetry_queue.fetch_job(job_id)
+            if job:
+                all_jobs.append(serialize_job(job))
+    except ValueError as e:
+        logger.warning("Skipping corrupt finished job execution: %s", e)
 
-    # Jobs failed
-    for job_id in failed.get_job_ids():
-        job = telemetry_queue.fetch_job(job_id)
-        all_jobs.append(serialize_job(job))
+    # 4. Failed jobs
+    try:
+        for job_id in failed.get_job_ids():
+            job = telemetry_queue.fetch_job(job_id)
+            if job:
+                all_jobs.append(serialize_job(job))
+    except ValueError as e:
+        logger.warning("Skipping corrupt failed job execution: %s", e)
 
-    # Order by enqueued_at descending
-    all_jobs.sort(key=lambda x: x["enqueued_at"] or datetime.min, reverse=True)
+    # Order safely
+    all_jobs.sort(
+        key=lambda x: x.get("enqueued_at") or datetime.min,
+        reverse=True,
+    )
 
     return all_jobs
 
