@@ -155,22 +155,6 @@ async def run_export(job_id: str, date_from: str, date_to: str):
             # Job already failed — do not explode
             logger.warning("Job %s already marked failed", job_id)
         raise
-    # except Exception as exc:
-    #     # Get current job status to avoid overwriting 'cancelled' state
-    #     from rq import get_current_job
-
-    #     job = get_current_job()
-
-    #     if not job.get_status() == "failed":
-    #         await set_status(
-    #             job_id=job_id,
-    #             status="failed",
-    #             progress={"stage": "failed"},
-    #             error=str(exc),
-    #         )
-    #     print(f"[EXPORT] Job {job_id} FAILED")
-    #     print(traceback.format_exc())
-    #     raise
 
 # Optional helper for updating progress
 async def update_progress(job_id: str, progress: dict):
@@ -179,16 +163,3 @@ async def update_progress(job_id: str, progress: dict):
 
     async with get_worker_db() as db:
         await update_job_progress_only(db, job_id, progress)
-
-
-# Optional helper for cooperative cancellation
-async def is_cancelled(job_id: str) -> bool:
-    from app.core.database import get_worker_db
-    from app.models.export_job import ExportJob
-
-    async with get_worker_db() as db:
-        result = await db.execute(
-            ExportJob.__table__.select().where(ExportJob.job_id == job_id)
-        )
-        job = result.first()
-        return job and job._mapping.get("status") == "cancelling"

@@ -16,14 +16,6 @@ from app.services.mtta_service import MTTAService
 from app.services.mttr_service import MTTRService
 from app.api.health_check_api import HealthCheckApiClient
 from app.services.endpoint_health_service import EndpointHealthService
-from app.core.database import get_db
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.redis_queue import telemetry_queue
-from app.models.export_job import ExportJob
-from sqlalchemy import insert
-from app.services.export_job_service import update_job_status
-from app.workers.telemetry_export_sync import run_export_sync
 
 router = APIRouter()
 
