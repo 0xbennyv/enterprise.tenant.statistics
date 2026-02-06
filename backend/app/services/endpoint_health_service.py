@@ -16,8 +16,11 @@ class EndpointHealthService:
         self.org_client = org_client
         self.endpoint_health_client = endpoint_health_client
 
-    async def collect_endpoint_health(self) -> Dict[str, Any]:
-        tenants = await self.org_client.list_tenants()
+    async def collect_endpoint_health(self, tenant_id: str | None) -> Dict[str, Any]:
+        if not tenant_id:
+            tenants = await self.org_client.list_tenants()
+        else:
+            tenants = await self.org_client.list_tenant(tenant_id=tenant_id)
 
 
         async def fetch_health_check(tenant):

@@ -22,8 +22,12 @@ class MTTRService:
             self,
             created_after: datetime,
             created_before: datetime,
+            tenant_id: str | None
         ) -> Dict[str, Any]:
-        tenants = await self.org_client.list_tenants()
+        if not tenant_id:
+            tenants = await self.org_client.list_tenants()
+        else:
+            tenants = await self.org_client.list_tenant(tenant_id=tenant_id)
 
         # cases_by_tenant = {}
 

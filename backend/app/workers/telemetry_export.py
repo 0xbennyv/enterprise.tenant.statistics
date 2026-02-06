@@ -14,7 +14,7 @@ logger = logging.getLogger("app.telemetry_export")
 EXPORT_DIR = Path("/code/exports")  # <-- Docker-mounted volume for persistence
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
 
-async def run_export(job_id: str, date_from: str, date_to: str):
+async def run_export(job_id: str, date_from: str, date_to: str, tenant_id: str | None):
     """
     Telemetry export worker.
     - NO long-lived DB sessions
@@ -127,7 +127,7 @@ async def run_export(job_id: str, date_from: str, date_to: str):
         )
 
         # run export
-        file_path = await service.export_to_excel(date_from_dt, date_to_dt)
+        file_path = await service.export_to_excel(date_from_dt, date_to_dt, tenant_id)
 
         if not file_path:
             await set_status(

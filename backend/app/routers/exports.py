@@ -2,22 +2,10 @@
 
 import os
 from pathlib import Path
-from fastapi import APIRouter, HTTPException
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from datetime import datetime
-from app.api.alerts_api import AlertsApiClient
-from app.services.alert_service import AlertTelemetryService
-from app.api.cases_api import CasesApiClient
-from app.services.case_service import CaseTelemetryService
-from app.api.oauth_api import TokenManager
-from app.core.constants import oauth_url, global_url
-from app.api.org_api import OrgApiClient
-from app.api.case_detections_api import CaseDetectionsApiClient
-from app.services.mttd_service import MTTDService
-from app.services.mtta_service import MTTAService
-from app.services.mttr_service import MTTRService
-from app.api.health_check_api import HealthCheckApiClient
-from app.services.endpoint_health_service import EndpointHealthService
 from app.core.database import get_db
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,8 +14,9 @@ from app.services.redis_queue import telemetry_queue, started, finished, failed,
 from app.models.export_job import ExportJob
 from sqlalchemy import insert, select
 import logging
-
-from app.services.export_job_service import update_job_status
+from rq.job import Job
+from rq.exceptions import NoSuchJobError
+from app.services.export_job_service import update_job_status, _apply_job_status_update
 from app.workers.telemetry_export_sync import run_export_sync
 
 logger = logging.getLogger("app.exports")
@@ -35,17 +24,32 @@ logger = logging.getLogger("app.exports")
 router = APIRouter()
 
 @router.post("/")
-async def export_telemetry(date_from: str, date_to: str, db: AsyncSession = Depends(get_db)):
+async def export_telemetry(
+    date_from: str, 
+    date_to: str, 
+    tenant_id: Optional[str] = Query(default=None), 
+    db: AsyncSession = Depends(get_db)
+):
     date_from_new = datetime.strptime(date_from, "%Y-%m-%d").date()
     date_to_new = datetime.strptime(date_to, "%Y-%m-%d").date()
 
     # Check if there is already a record with same date_from and date_to
-    exists = await db.execute(
-        ExportJob.__table__.select().where(
-            ExportJob.date_from == date_from_new,
-            ExportJob.date_to == date_to_new
+    if tenant_id:
+        exists = await db.execute(
+            ExportJob.__table__.select().where(
+                ExportJob.date_from == date_from_new,
+                ExportJob.date_to == date_to_new,
+                ExportJob.tenant_id == tenant_id
+            )
         )
-    )
+    else:
+        exists = await db.execute(
+            ExportJob.__table__.select().where(
+                ExportJob.date_from == date_from_new,
+                ExportJob.date_to == date_to_new,
+                ExportJob.tenant_id == None
+            )
+        )
     if exists.first():
         raise HTTPException(status_code=404, detail="Job already exists")
 
@@ -54,6 +58,7 @@ async def export_telemetry(date_from: str, date_to: str, db: AsyncSession = Depe
         run_export_sync, 
         date_from, 
         date_to,
+        tenant_id,
         job_timeout=60 * 60 * 2,  # example: 2h
         result_ttl=0,
         failure_ttl=0,
@@ -65,6 +70,7 @@ async def export_telemetry(date_from: str, date_to: str, db: AsyncSession = Depe
             job_id=job.id,
             date_from=date_from_new,
             date_to=date_to_new,
+            tenant_id=tenant_id,
             status=job._status,
             progress={
                 "stage": "queued",
@@ -80,10 +86,15 @@ async def export_telemetry(date_from: str, date_to: str, db: AsyncSession = Depe
     }
 
 @router.get("/")
-async def get_exports(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        ExportJob.__table__.select().order_by(ExportJob.created_at.desc())
-    )
+async def get_exports(tenant_id: Optional[str] = Query(default=None), db: AsyncSession = Depends(get_db)):
+    if tenant_id:
+        result = await db.execute(
+            ExportJob.__table__.select().where(ExportJob.tenant_id == tenant_id).order_by(ExportJob.created_at.desc())
+        )
+    else:
+        result = await db.execute(
+            ExportJob.__table__.select().order_by(ExportJob.created_at.desc())
+        )
     jobs = result.all()
 
     return [
@@ -92,6 +103,7 @@ async def get_exports(db: AsyncSession = Depends(get_db)):
             "job_id": job._mapping["job_id"],
             "date_from": job._mapping["date_from"],
             "date_to": job._mapping["date_to"],
+            "tenant_id": job._mapping["tenant_id"],
             "status": job._mapping["status"],
             "progress": job._mapping.get("progress"),
             "file_path": job._mapping.get("file_path"),
@@ -103,44 +115,33 @@ async def get_exports(db: AsyncSession = Depends(get_db)):
 
 @router.get("/jobs/redis")
 async def get_export_jobs_in_redis():
+    """
+    Get all export jobs currently in the RQ queue.
+    """
+
     all_jobs = []
 
-    # 1. Jobs still in queue (safe)
+    # Jobs still in queue
     for job in telemetry_queue.get_jobs():
         all_jobs.append(serialize_job(job))
 
-    # 2. Started jobs (UNSAFE without guard)
-    try:
-        for job_id in started.get_job_ids():
-            job = telemetry_queue.fetch_job(job_id)
-            if job:
-                all_jobs.append(serialize_job(job))
-    except ValueError as e:
-        logger.warning("Skipping corrupt started job execution: %s", e)
+    # Jobs currently running
+    for job_id in started.get_job_ids():
+        job = telemetry_queue.fetch_job(job_id)
+        all_jobs.append(serialize_job(job))
 
-    # 3. Finished jobs
-    try:
-        for job_id in finished.get_job_ids():
-            job = telemetry_queue.fetch_job(job_id)
-            if job:
-                all_jobs.append(serialize_job(job))
-    except ValueError as e:
-        logger.warning("Skipping corrupt finished job execution: %s", e)
+    # Jobs finished
+    for job_id in finished.get_job_ids():
+        job = telemetry_queue.fetch_job(job_id)
+        all_jobs.append(serialize_job(job))
 
-    # 4. Failed jobs
-    try:
-        for job_id in failed.get_job_ids():
-            job = telemetry_queue.fetch_job(job_id)
-            if job:
-                all_jobs.append(serialize_job(job))
-    except ValueError as e:
-        logger.warning("Skipping corrupt failed job execution: %s", e)
+    # Jobs failed
+    for job_id in failed.get_job_ids():
+        job = telemetry_queue.fetch_job(job_id)
+        all_jobs.append(serialize_job(job))
 
-    # Order safely
-    all_jobs.sort(
-        key=lambda x: x.get("enqueued_at") or datetime.min,
-        reverse=True,
-    )
+    # Order by enqueued_at descending
+    all_jobs.sort(key=lambda x: x["enqueued_at"] or datetime.min, reverse=True)
 
     return all_jobs
 
@@ -161,6 +162,7 @@ async def get_export_status(job_id: str, db: AsyncSession = Depends(get_db)):
         "job_id": job_id,
         "date_from": job["date_from"],
         "date_to": job["date_to"],
+        "tenant_id": job["tenant_id"],
         "status": job["status"],
         "progress": job.get("progress"),
         "file_path": job.get("file_path"),
@@ -171,21 +173,47 @@ async def get_export_status(job_id: str, db: AsyncSession = Depends(get_db)):
 # ---------- Cancel a running job ----------
 @router.post("/{job_id}/cancel")
 async def cancel_export(job_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Cancel an export job.
+    - Queued → removed immediately
+    - Running → cooperative cancel (DB status checked by worker)
+    - Missing → treated as cancelled
+    """
     result = await db.execute(
-        ExportJob.__table__.select().where(ExportJob.job_id == job_id)
+        ExportJob.__table__.select().where(
+            ExportJob.job_id == job_id,
+            ExportJob.status.in_(["queued", "running"])
+        )
     )
     job_row = result.first()
 
     if not job_row:
-        raise HTTPException(status_code=404, detail="Job not found")
+        raise HTTPException(status_code=404, detail="Job not found or not cancellable")
     
+    # Attempt to fetch the RQ job
+    try:
+        rq_job = Job.fetch(job_id, connection=telemetry_queue.connection)
+    except NoSuchJobError:
+        rq_job = None
+
+    if rq_job:
+        try:
+            if rq_job.get_status() == "queued" or rq_job.get_status() == "started":
+                # Job is queued/running → remove immediately
+                telemetry_queue.remove(job_id)
+        except:
+            # All other states
+            raise HTTPException(
+                status_code=409,
+                detail=f"Cannot cancel job in state: {rq_job.get_status()}",
+            )
     await update_job_status(
         db,
         job_id,
-        new_status="cancelling",
-        progress={"stage": "cancelling"},
+        new_status="cancelled",
+        progress={"stage": "cancelled"},
     )
-    return {"status": "cancelling"}
+    return {"status": "cancelled"}
 
 @router.get("/{job_id}/download")
 async def download_export(job_id: str, db: AsyncSession = Depends(get_db)):

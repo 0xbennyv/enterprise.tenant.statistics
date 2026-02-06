@@ -14,8 +14,11 @@ class AlertTelemetryService:
         self.org_client = org_client
         self.alerts_client = alerts_client
 
-    async def collect(self, date_from: date, date_to: date) -> Dict:
-        tenants = await self.org_client.list_tenants()
+    async def collect(self, date_from: date, date_to: date, tenant_id: str | None) -> Dict:
+        if not tenant_id:
+            tenants = await self.org_client.list_tenants()
+        else:
+            tenants = await self.org_client.list_tenant(tenant_id=tenant_id)
 
         async def fetch_alerts(tenant):
             alerts = await self.alerts_client.list_alerts(
@@ -26,6 +29,7 @@ class AlertTelemetryService:
             )
             return tenant["id"], tenant["name"], alerts
 
+        
         results = await asyncio.gather(
             *[fetch_alerts(t) for t in tenants]
         )

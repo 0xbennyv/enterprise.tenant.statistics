@@ -47,3 +47,20 @@ class OrgApiClient(BaseApiClient):
             # page = pages_total  # Fetch only first page
 
         return tenants
+    
+    async def list_tenant(self, tenant_id: str) -> Dict[str, Any]:
+        """
+        List tenant details
+        """
+        org_info = await self.token_manager.get_org_info()
+        org_id = org_info["id"]
+        global_url = org_info["apiHosts"]["global"]
+
+        tenant = []
+        url = f"{global_url}/organization/v1/tenants/{tenant_id}"
+        headers = {"X-Organization-ID": org_id}
+        resp = await self.get(url, headers=headers)
+
+        tenant.append(resp)
+        
+        return tenant

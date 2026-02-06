@@ -6,11 +6,11 @@ from app.models.export_job import ExportJob
 
 ALLOWED_TRANSITIONS = {
     "queued": ["running", "cancelled", "failed"],
-    "running": ["completed", "failed", "cancelling"],
-    "cancelling": ["cancelled"],
+    "running": ["completed", "failed", "cancelled"],
+    # "cancelling": ["cancelled"],
     "completed": [],
     "failed": ["queued", "running"],
-    "cancelled": [],
+    "cancelled": ["queued"],
 }
 
 async def update_job_status(
@@ -22,6 +22,7 @@ async def update_job_status(
     error: str | None = None,
     file_path: str | None = None,
 ):
+    # if not db.in_transaction():
     async with db.begin():
         result = await db.execute(
             select(ExportJob).where(ExportJob.job_id == job_id)
@@ -48,6 +49,8 @@ async def update_job_status(
         if file_path is not None:
             job.file_path = file_path
 
+    # await db.flush()
+
     return job
 
 async def update_job_progress_only(
@@ -61,3 +64,38 @@ async def update_job_progress_only(
             .where(ExportJob.job_id == job_id)
             .values(progress=progress)
         )
+
+async def _apply_job_status_update(
+    db: AsyncSession,
+    job_id: str,
+    new_status: str,
+    *,
+    progress: dict | None = None,
+    error: str | None = None,
+    file_path: str | None = None,
+):
+    result = await db.execute(
+        select(ExportJob).where(ExportJob.job_id == job_id)
+    )
+    job = result.scalar_one_or_none()
+
+    if not job:
+        return None
+
+    if job.status == new_status:
+        return job
+
+    if new_status not in ALLOWED_TRANSITIONS[job.status]:
+        raise ValueError(
+            f"Invalid status transition: {job.status} → {new_status}"
+        )
+
+    job.status = new_status
+    if progress is not None:
+        job.progress = progress
+    if error is not None:
+        job.error = error
+    if file_path is not None:
+        job.file_path = file_path
+
+    return job

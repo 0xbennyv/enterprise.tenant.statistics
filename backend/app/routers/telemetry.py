@@ -1,6 +1,7 @@
 # app/routers/telemetry.py
 
 import os
+from typing import Optional
 from fastapi import APIRouter, Query
 from datetime import date, datetime, time, timezone
 from app.api.alerts_api import AlertsApiClient
@@ -56,13 +57,14 @@ endpoint_health_service = EndpointHealthService(
 @router.get("/alerts")
 async def alert_telemetry(
     date_from: date = Query(...),
-    date_to: date = Query(...)
+    date_to: date = Query(...),
+    tenant_id: Optional[str] = Query(default=None)
 ):
     """
     Collects alert telemetry between date_from and date_to.
     Returns Number of Security Incidents.
     """
-    return await alerts_service.collect(date_from, date_to)
+    return await alerts_service.collect(date_from, date_to, tenant_id)
 
 @router.get("/cases/sla")
 async def cases_sla_telemetry(

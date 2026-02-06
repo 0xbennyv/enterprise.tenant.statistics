@@ -14,6 +14,7 @@ class ExportJob(Base):
     job_id = Column(String, unique=True, nullable=False)
     date_from = Column(Date)
     date_to = Column(Date)
+    tenant_id = Column(String, nullable=True)
     status = Column(String, nullable=False)
     progress = Column(JSON, nullable=True)
     file_path = Column(String, nullable=True)
