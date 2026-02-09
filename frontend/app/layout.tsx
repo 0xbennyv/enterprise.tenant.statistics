@@ -4,6 +4,8 @@ import "./styles/components.css";
 import "./styles/globals.css";
 import Navbar from "./components/Navbar";
 import Toast from "./components/Toast";
+import Header from "./components/Header";
+import { SidebarProvider } from "./contexts/SidebarContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,14 +22,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
-        <Navbar />
-        <div className="bg-white p-5">
-          <h2 className="text-h3">Tenant Statistics</h2>
-        </div>
-        <div className="my-5 mx-8">
-          {children}
-        </div>
-        <Toast />
+        <SidebarProvider>
+          <Navbar />
+          <Header />
+          <div className="my-5">
+            {children}
+          </div>
+          <Toast />
+        </SidebarProvider>
       </body>
     </html>
   );

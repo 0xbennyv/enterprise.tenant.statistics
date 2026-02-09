@@ -1,28 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "react-toastify";
 
-type TableData = {
-  jobId: string;
-  tenantId?: string | null;
-  createdAt: string;
+type TenantData = {
+  id: string;
+  showAs: string;
+  name: string;
+  dataRegion: string;
   status: string;
-  downloadUrl?: string;
-  dateFrom?: string;
-  dateTo?: string;
 };
 
 type SortConfig = {
-  key: keyof TableData | null;
+  key: keyof TenantData | null;
   direction: "asc" | "desc";
 };
 
-type DataTableProps = {
-  data: TableData[];
+type TenantsDataTableProps = {
+  data: TenantData[];
 };
 
-const DataTable = ({ data }: DataTableProps) => {
+const TenantsDataTable = ({ data }: TenantsDataTableProps) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: null,
     direction: "asc",
@@ -30,7 +27,7 @@ const DataTable = ({ data }: DataTableProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
-  const handleSort = (key: keyof TableData) => {
+  const handleSort = (key: keyof TenantData) => {
     let direction: "asc" | "desc" = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
       direction = "desc";
@@ -46,127 +43,15 @@ const DataTable = ({ data }: DataTableProps) => {
     let aValue: any = a[sortConfig.key];
     let bValue: any = b[sortConfig.key];
 
-    // Handle null/undefined values - treat as empty string for sorting
-    if (aValue === undefined || aValue === null) aValue = "";
-    if (bValue === undefined || bValue === null) bValue = "";
+    if (aValue === undefined || bValue === undefined) return 0;
 
-    // Handle date strings for createdAt column
-    if (sortConfig.key === "createdAt") {
-      const aDate = new Date(aValue).getTime();
-      const bDate = new Date(bValue).getTime();
-      if (sortConfig.direction === "asc") {
-        return aDate - bDate;
-      } else {
-        return bDate - aDate;
-      }
-    }
-
-    // Handle string comparison for other columns
+    // Handle string comparison for all columns
     if (sortConfig.direction === "asc") {
       return aValue > bValue ? 1 : -1;
     } else {
       return aValue < bValue ? 1 : -1;
     }
   });
-
-  const handleDownload = async (row: TableData) => {
-    try {
-      // Get backend URL from environment variable or use localhost for development
-      const backendUrl = process.env.NEXT_PUBLIC_DOWNLOAD_URL;
-
-      // Call the backend directly: http://localhost:5006/exports/{job_id}/download
-      const endpoint = `${backendUrl}/exports/${encodeURIComponent(row.jobId)}/download`;
-
-      const response = await fetch(endpoint, {
-        method: "GET",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || errorData.error || "Failed to download file");
-      }
-
-      // Get the blob from the response
-      const blob = await response.blob();
-
-      // Generate filename using date_from and date_to if available
-      let filename = `export-${row.jobId}.xlsx`;
-      if (row.dateFrom && row.dateTo) {
-        // Format dates as YYYY-MM-DD for filename
-        const dateFrom = row.dateFrom.replace(/-/g, '');
-        const dateTo = row.dateTo.replace(/-/g, '');
-        filename = `export_${dateFrom}_to_${dateTo}.xlsx`;
-      }
-
-      // Override with filename from Content-Disposition header if present
-      const contentDisposition = response.headers.get("content-disposition");
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename=["']?([^"';]+)["']?/i);
-        if (filenameMatch) {
-          // Remove trailing underscores from file extension (e.g., .xlsx_ -> .xlsx)
-          const headerFilename = filenameMatch[1].trim().replace(/(\.[a-zA-Z0-9]+)_+$/i, '$1');
-          // Only use header filename if dates are not available
-          if (!row.dateFrom || !row.dateTo) {
-            filename = headerFilename;
-          }
-        }
-      }
-
-      // Create a temporary URL for the blob
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-
-      // Cleanup
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      toast.success("File downloaded successfully");
-    } catch (error) {
-      console.error("Download error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to download file");
-    }
-  };
-
-  const getStatusBadgeClass = (status: string) => {
-    const statusLower = status.toLowerCase();
-    switch (statusLower) {
-      case "running":
-        return "bg-green-500 text-white";
-      case "pending":
-        return "bg-orange-300 text-white";
-      case "completed":
-      case "done":
-        return "bg-blue-200 text-white";
-      case "failed":
-      case "error":
-        return "bg-red-500 text-white";
-      default:
-        return "bg-gray-400 text-white";
-    }
-  };
-
-  const formatStatus = (status: string) => {
-    const statusLower = status.toLowerCase();
-    switch (statusLower) {
-      case "running":
-        return "Running";
-      case "done":
-        return "Completed";
-      case "error":
-        return "Failed";
-      default:
-        return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
-    }
-  };
-
-  const isCompleted = (status: string): boolean => {
-    const statusLower = status.toLowerCase();
-    return statusLower === "completed" || statusLower === "done";
-  };
 
   // Calculate pagination
   const totalPages = Math.ceil(sortedData.length / rowsPerPage);
@@ -221,6 +106,38 @@ const DataTable = ({ data }: DataTableProps) => {
     return pages;
   };
 
+  const getStatusBadgeClass = (status: string) => {
+    const statusLower = status.toLowerCase();
+    switch (statusLower) {
+      case "active":
+        return "bg-green-500 text-white";
+      case "inactive":
+        return "bg-gray-400 text-white";
+      case "pending":
+        return "bg-orange-300 text-white";
+      case "suspended":
+        return "bg-red-500 text-white";
+      default:
+        return "bg-gray-400 text-white";
+    }
+  };
+
+  const formatStatus = (status: string) => {
+    const statusLower = status.toLowerCase();
+    switch (statusLower) {
+      case "active":
+        return "Active";
+      case "inactive":
+        return "Inactive";
+      case "pending":
+        return "Pending";
+      case "suspended":
+        return "Suspended";
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+    }
+  };
+
   return (
     <div className="data-table w-full overflow-x-auto">
       <table className="w-full border-collapse">
@@ -228,43 +145,13 @@ const DataTable = ({ data }: DataTableProps) => {
           <tr className="border-b border-gray-200">
             <th
               className="text-left py-3 px-6 text-list font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
-              onClick={() => handleSort("jobId")}
-            >
-              <div className="flex items-center gap-2">
-                Job Id
-                <div className="flex flex-col">
-                  <svg
-                    className={`w-3 h-3 ${sortConfig.key === "jobId" && sortConfig.direction === "asc"
-                      ? "text-sophos-blue"
-                      : "text-gray-400"
-                      }`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M5 12l5-5 5 5H5z" />
-                  </svg>
-                  <svg
-                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "jobId" && sortConfig.direction === "desc"
-                      ? "text-sophos-blue"
-                      : "text-gray-400"
-                      }`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M5 8l5 5 5-5H5z" />
-                  </svg>
-                </div>
-              </div>
-            </th>
-            <th
-              className="text-left py-3 px-6 text-list font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
-              onClick={() => handleSort("tenantId")}
+              onClick={() => handleSort("id")}
             >
               <div className="flex items-center gap-2">
                 Tenant ID
                 <div className="flex flex-col">
                   <svg
-                    className={`w-3 h-3 ${sortConfig.key === "tenantId" && sortConfig.direction === "asc"
+                    className={`w-3 h-3 ${sortConfig.key === "id" && sortConfig.direction === "asc"
                       ? "text-sophos-blue"
                       : "text-gray-400"
                       }`}
@@ -274,7 +161,7 @@ const DataTable = ({ data }: DataTableProps) => {
                     <path d="M5 12l5-5 5 5H5z" />
                   </svg>
                   <svg
-                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "tenantId" && sortConfig.direction === "desc"
+                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "id" && sortConfig.direction === "desc"
                       ? "text-sophos-blue"
                       : "text-gray-400"
                       }`}
@@ -288,13 +175,13 @@ const DataTable = ({ data }: DataTableProps) => {
             </th>
             <th
               className="text-left py-3 px-6 text-list font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
-              onClick={() => handleSort("createdAt")}
+              onClick={() => handleSort("showAs")}
             >
               <div className="flex items-center gap-2">
-                Created At
+                Show As
                 <div className="flex flex-col">
                   <svg
-                    className={`w-3 h-3 ${sortConfig.key === "createdAt" && sortConfig.direction === "asc"
+                    className={`w-3 h-3 ${sortConfig.key === "showAs" && sortConfig.direction === "asc"
                       ? "text-sophos-blue"
                       : "text-gray-400"
                       }`}
@@ -304,7 +191,67 @@ const DataTable = ({ data }: DataTableProps) => {
                     <path d="M5 12l5-5 5 5H5z" />
                   </svg>
                   <svg
-                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "createdAt" && sortConfig.direction === "desc"
+                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "showAs" && sortConfig.direction === "desc"
+                      ? "text-sophos-blue"
+                      : "text-gray-400"
+                      }`}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M5 8l5 5 5-5H5z" />
+                  </svg>
+                </div>
+              </div>
+            </th>
+            <th
+              className="text-left py-3 px-6 text-list font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleSort("name")}
+            >
+              <div className="flex items-center gap-2">
+                Name
+                <div className="flex flex-col">
+                  <svg
+                    className={`w-3 h-3 ${sortConfig.key === "name" && sortConfig.direction === "asc"
+                      ? "text-sophos-blue"
+                      : "text-gray-400"
+                      }`}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M5 12l5-5 5 5H5z" />
+                  </svg>
+                  <svg
+                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "name" && sortConfig.direction === "desc"
+                      ? "text-sophos-blue"
+                      : "text-gray-400"
+                      }`}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M5 8l5 5 5-5H5z" />
+                  </svg>
+                </div>
+              </div>
+            </th>
+            <th
+              className="text-left py-3 px-6 text-list font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleSort("dataRegion")}
+            >
+              <div className="flex items-center gap-2">
+                Data Region
+                <div className="flex flex-col">
+                  <svg
+                    className={`w-3 h-3 ${sortConfig.key === "dataRegion" && sortConfig.direction === "asc"
+                      ? "text-sophos-blue"
+                      : "text-gray-400"
+                      }`}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M5 12l5-5 5 5H5z" />
+                  </svg>
+                  <svg
+                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "dataRegion" && sortConfig.direction === "desc"
                       ? "text-sophos-blue"
                       : "text-gray-400"
                       }`}
@@ -346,9 +293,6 @@ const DataTable = ({ data }: DataTableProps) => {
                 </div>
               </div>
             </th>
-            <th className="text-left py-3 px-6 text-list font-semibold text-gray-900">
-              Action
-            </th>
           </tr>
         </thead>
         <tbody>
@@ -359,14 +303,15 @@ const DataTable = ({ data }: DataTableProps) => {
               </td>
             </tr>
           ) : (
-            paginatedData.map((row, index) => (
+            paginatedData.map((row) => (
               <tr
-                key={row.jobId}
+                key={row.id}
                 className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
               >
-                <td className="py-4 px-6">{row.jobId}</td>
-                <td className="py-4 px-6">{row.tenantId || "-"}</td>
-                <td className="py-4 px-6 ">{row.createdAt} (UTC)</td>
+                <td className="py-4 px-6">{row.id}</td>
+                <td className="py-4 px-6">{row.showAs}</td>
+                <td className="py-4 px-6">{row.name}</td>
+                <td className="py-4 px-6">{row.dataRegion}</td>
                 <td className="py-4 px-6">
                   <span
                     className={`inline-block px-3 py-1 rounded-full text-ps font-semibold ${getStatusBadgeClass(
@@ -375,19 +320,6 @@ const DataTable = ({ data }: DataTableProps) => {
                   >
                     {formatStatus(row.status)}
                   </span>
-                </td>
-                <td className="py-4 px-6">
-                  <button
-                    onClick={() => handleDownload(row)}
-                    disabled={!isCompleted(row.status)}
-                    className={`font-medium text-list transition-colors ${isCompleted(row.status)
-                      ? "text-sophos-blue hover:text-blue-600 cursor-pointer"
-                      : "text-gray-400 cursor-not-allowed opacity-50"
-                      }`}
-                    aria-label={`Download ${row.jobId}`}
-                  >
-                    Download
-                  </button>
                 </td>
               </tr>
             ))
@@ -452,4 +384,4 @@ const DataTable = ({ data }: DataTableProps) => {
   );
 };
 
-export default DataTable;
+export default TenantsDataTable;

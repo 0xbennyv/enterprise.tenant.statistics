@@ -16,6 +16,7 @@ export async function GET() {
 
     const data = await response.json();
 
+    
     if (!response.ok) {
       return NextResponse.json(
         { error: data.error || "Failed to fetch telemetry data" },
@@ -36,7 +37,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { date_from, date_to } = body;
+    const { date_from, date_to, tenant_id } = body;
 
 
     // Validate dates
@@ -63,6 +64,11 @@ export async function POST(request: NextRequest) {
     const url = new URL(`${backendUrl}/exports`);
     url.searchParams.append("date_from", date_from);
     url.searchParams.append("date_to", date_to);
+    
+    // Add tenant_id to query parameters if provided
+    if (tenant_id && tenant_id.trim()) {
+      url.searchParams.append("tenant_id", tenant_id.trim());
+    }
 
     // Forward the request to the external endpoint with query parameters
     const response = await fetch(url.toString(), {
