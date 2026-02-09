@@ -85,10 +85,10 @@ export default function TenantsPage() {
     // Initial fetch with loading state
     fetchTenantsData(true);
 
-    // Set up polling every 1 minute (60000 milliseconds)
+    // Set up polling every 1 hour (3600000 milliseconds)
     const intervalId = setInterval(() => {
       fetchTenantsData(false);
-    }, 60000);
+    }, 3600000);
 
     // Cleanup interval on component unmount
     return () => {

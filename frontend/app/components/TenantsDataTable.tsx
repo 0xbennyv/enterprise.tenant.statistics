@@ -148,7 +148,7 @@ const TenantsDataTable = ({ data }: TenantsDataTableProps) => {
               onClick={() => handleSort("id")}
             >
               <div className="flex items-center gap-2">
-                ID
+                Tenant ID
                 <div className="flex flex-col">
                   <svg
                     className={`w-3 h-3 ${sortConfig.key === "id" && sortConfig.direction === "asc"

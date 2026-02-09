@@ -12,6 +12,7 @@ type DatePickerCardProps = {
 const DatePickerCard = ({ onSuccess }: DatePickerCardProps) => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [tenantId, setTenantId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
   const formatDate = (date: Date | null): string | null => {
@@ -52,15 +53,21 @@ const DatePickerCard = ({ onSuccess }: DatePickerCardProps) => {
       const formattedStartDate = formatDate(startDate);
       const formattedEndDate = formatDate(endDate);
 
+      const requestBody: { date_from: string; date_to: string; tenant_id?: string } = {
+        date_from: formattedStartDate!,
+        date_to: formattedEndDate!,
+      };
+
+      if (tenantId.trim()) {
+        requestBody.tenant_id = tenantId.trim();
+      }
+
       const response = await fetch("/api/telemetry", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          date_from: formattedStartDate,
-          date_to: formattedEndDate,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
@@ -72,6 +79,7 @@ const DatePickerCard = ({ onSuccess }: DatePickerCardProps) => {
       // Clear date values on successful submission
       setStartDate(null);
       setEndDate(null);
+      setTenantId("");
       toast.success("Request submitted successfully!");
 
       // Call GET request to fetch updated telemetry data
@@ -130,6 +138,22 @@ const DatePickerCard = ({ onSuccess }: DatePickerCardProps) => {
               placeholderText="Select end date"
               className="w-full border-0 outline-none bg-transparent"
               wrapperClassName="w-full"
+            />
+          </div>
+        </div>
+        <div className="input flex-1">
+          <label htmlFor="tenant-id">
+            Tenant ID
+          </label>
+          <div className="input-inner">
+            <input
+              id="tenant-id"
+              type="text"
+              value={tenantId}
+              onChange={(e) => setTenantId(e.target.value)}
+              placeholder="Enter tenant ID (optional)"
+              className="w-full border-0 outline-none bg-transparent"
+              aria-label="Tenant ID (optional)"
             />
           </div>
         </div>

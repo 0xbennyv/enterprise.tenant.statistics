@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 
 type TableData = {
   jobId: string;
+  tenantId?: string | null;
   createdAt: string;
   status: string;
   downloadUrl?: string;
@@ -45,7 +46,9 @@ const DataTable = ({ data }: DataTableProps) => {
     let aValue: any = a[sortConfig.key];
     let bValue: any = b[sortConfig.key];
 
-    if (aValue === undefined || bValue === undefined) return 0;
+    // Handle null/undefined values - treat as empty string for sorting
+    if (aValue === undefined || aValue === null) aValue = "";
+    if (bValue === undefined || bValue === null) bValue = "";
 
     // Handle date strings for createdAt column
     if (sortConfig.key === "createdAt") {
@@ -255,6 +258,36 @@ const DataTable = ({ data }: DataTableProps) => {
             </th>
             <th
               className="text-left py-3 px-6 text-list font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleSort("tenantId")}
+            >
+              <div className="flex items-center gap-2">
+                Tenant ID
+                <div className="flex flex-col">
+                  <svg
+                    className={`w-3 h-3 ${sortConfig.key === "tenantId" && sortConfig.direction === "asc"
+                      ? "text-sophos-blue"
+                      : "text-gray-400"
+                      }`}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M5 12l5-5 5 5H5z" />
+                  </svg>
+                  <svg
+                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "tenantId" && sortConfig.direction === "desc"
+                      ? "text-sophos-blue"
+                      : "text-gray-400"
+                      }`}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M5 8l5 5 5-5H5z" />
+                  </svg>
+                </div>
+              </div>
+            </th>
+            <th
+              className="text-left py-3 px-6 text-list font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
               onClick={() => handleSort("createdAt")}
             >
               <div className="flex items-center gap-2">
@@ -321,7 +354,7 @@ const DataTable = ({ data }: DataTableProps) => {
         <tbody>
           {paginatedData.length === 0 ? (
             <tr>
-              <td colSpan={4} className="text-center py-8 text-gray-500">
+              <td colSpan={5} className="text-center py-8 text-gray-500">
                 No data available
               </td>
             </tr>
@@ -332,6 +365,7 @@ const DataTable = ({ data }: DataTableProps) => {
                 className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
               >
                 <td className="py-4 px-6">{row.jobId}</td>
+                <td className="py-4 px-6">{row.tenantId || "-"}</td>
                 <td className="py-4 px-6 ">{row.createdAt} (UTC)</td>
                 <td className="py-4 px-6">
                   <span

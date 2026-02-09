@@ -12,6 +12,7 @@ type TelemetryExport = {
   job_id: string;
   date_from: string;
   date_to: string;
+  tenant_id: string | null;
   status: string;
   progress: {
     stage: string;
@@ -24,6 +25,7 @@ type TelemetryExport = {
 
 type TableData = {
   jobId: string;
+  tenantId?: string | null;
   createdAt: string;
   status: string;
   downloadUrl?: string;
@@ -69,6 +71,7 @@ export default function ExportsPage() {
       const mappedData: TableData[] = (data as TelemetryExport[]).map(
         (item) => ({
           jobId: item.job_id,
+          tenantId: item.tenant_id || undefined,
           createdAt: formatDate(item.created_at),
           status: item.status,
           downloadUrl: item.file_path || undefined,
@@ -117,7 +120,7 @@ export default function ExportsPage() {
           </div>
           <div className="card-container bg-gray-50 border-gray-200 border rounded-md mx-6 mt-5">
             <div className="input">
-              <label className="px-6 pt-6 pb-1">Tenant Queue</label>
+              <label className="px-6 pt-6 pb-1">Jobs Queue</label>
               <div className="px-6 pb-6">
                 {isLoading ? (
                   <div className="text-center py-8 text-gray-500">Loading...</div>
