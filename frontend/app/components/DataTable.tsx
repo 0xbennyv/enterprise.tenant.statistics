@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "react-toastify";
+import ConfirmationModal from "./ConfirmationModal";
 
 type TableData = {
   jobId: string;
@@ -20,15 +21,18 @@ type SortConfig = {
 
 type DataTableProps = {
   data: TableData[];
+  onDelete?: () => void;
 };
 
-const DataTable = ({ data }: DataTableProps) => {
+const DataTable = ({ data, onDelete }: DataTableProps) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: null,
     direction: "asc",
   });
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [rowToDelete, setRowToDelete] = useState<TableData | null>(null);
 
   const handleSort = (key: keyof TableData) => {
     let direction: "asc" | "desc" = "asc";
@@ -131,6 +135,56 @@ const DataTable = ({ data }: DataTableProps) => {
     }
   };
 
+  const handleDeleteClick = (row: TableData) => {
+    // Only allow deletion of completed, queued, or failed jobs
+    if (!canDelete(row.status)) {
+      toast.error("Only completed, queued, or failed jobs can be deleted");
+      return;
+    }
+    setRowToDelete(row);
+    setDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!rowToDelete) return;
+
+    try {
+      const response = await fetch(`/api/telemetry/${encodeURIComponent(rowToDelete.jobId)}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.detail || "Failed to delete export");
+      }
+
+      toast.success("Job deleted successfully");
+
+      // Refresh table data if callback provided
+      if (onDelete) {
+        onDelete();
+      }
+
+      // Close modal and reset state
+      setDeleteModalOpen(false);
+      setRowToDelete(null);
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete export");
+      setDeleteModalOpen(false);
+      setRowToDelete(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalOpen(false);
+    setRowToDelete(null);
+  };
+
   const getStatusBadgeClass = (status: string) => {
     const statusLower = status.toLowerCase();
     switch (statusLower) {
@@ -166,6 +220,19 @@ const DataTable = ({ data }: DataTableProps) => {
   const isCompleted = (status: string): boolean => {
     const statusLower = status.toLowerCase();
     return statusLower === "completed" || statusLower === "done";
+  };
+
+  const canDelete = (status: string): boolean => {
+    const statusLower = status.toLowerCase();
+    // Only allow deletion for completed, queued, or failed jobs
+    // Explicitly exclude running jobs
+    return (
+      statusLower === "completed" ||
+      statusLower === "done" ||
+      statusLower === "queued" ||
+      statusLower === "failed" ||
+      statusLower === "error"
+    );
   };
 
   // Calculate pagination
@@ -346,7 +413,7 @@ const DataTable = ({ data }: DataTableProps) => {
                 </div>
               </div>
             </th>
-            <th className="text-left py-3 px-6 text-list font-semibold text-gray-900">
+            <th className="text-center py-3 px-6 text-list font-semibold text-gray-900">
               Action
             </th>
           </tr>
@@ -376,18 +443,31 @@ const DataTable = ({ data }: DataTableProps) => {
                     {formatStatus(row.status)}
                   </span>
                 </td>
-                <td className="py-4 px-6">
-                  <button
-                    onClick={() => handleDownload(row)}
-                    disabled={!isCompleted(row.status)}
-                    className={`font-medium text-list transition-colors ${isCompleted(row.status)
-                      ? "text-sophos-blue hover:text-blue-600 cursor-pointer"
-                      : "text-gray-400 cursor-not-allowed opacity-50"
-                      }`}
-                    aria-label={`Download ${row.jobId}`}
-                  >
-                    Download
-                  </button>
+                <td className="py-4 px-6 text-center">
+                  <div className="flex items-center justify-center gap-4">
+                    <button
+                      onClick={() => handleDownload(row)}
+                      disabled={!isCompleted(row.status)}
+                      className={`font-medium text-list transition-colors ${isCompleted(row.status)
+                        ? "text-sophos-blue hover:text-blue-600 cursor-pointer"
+                        : "text-gray-400 cursor-not-allowed opacity-50"
+                        }`}
+                      aria-label={`Download ${row.jobId}`}
+                    >
+                      Download
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClick(row)}
+                      disabled={!canDelete(row.status)}
+                      className={`font-medium text-list transition-colors ${!canDelete(row.status)
+                        ? "text-gray-400 cursor-not-allowed opacity-50"
+                        : "text-red-600 hover:text-red-700 cursor-pointer"
+                        }`}
+                      aria-label={`Delete ${row.jobId}`}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))
@@ -448,6 +528,20 @@ const DataTable = ({ data }: DataTableProps) => {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={deleteModalOpen}
+        title="Delete Export Job"
+        message={
+          rowToDelete
+            ? `Are you sure you want to delete export job ${rowToDelete.jobId}? This action cannot be undone.`
+            : ""
+        }
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </div>
   );
 };
