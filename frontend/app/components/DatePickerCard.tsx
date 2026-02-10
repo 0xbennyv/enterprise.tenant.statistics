@@ -1,19 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import { toast } from "react-toastify";
 import "react-datepicker/dist/react-datepicker.css";
 
 type DatePickerCardProps = {
   onSuccess?: () => void;
+  initialTenantId?: string;
 };
 
-const DatePickerCard = ({ onSuccess }: DatePickerCardProps) => {
+const DatePickerCard = ({ onSuccess, initialTenantId }: DatePickerCardProps) => {
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [tenantId, setTenantId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialTenantId) {
+      setTenantId(initialTenantId);
+    }
+  }, [initialTenantId]);
 
   const formatDate = (date: Date | null): string | null => {
     if (!date) return null;

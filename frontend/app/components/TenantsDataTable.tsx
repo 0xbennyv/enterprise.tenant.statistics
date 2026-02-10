@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type TenantData = {
   id: string;
@@ -20,12 +21,17 @@ type TenantsDataTableProps = {
 };
 
 const TenantsDataTable = ({ data }: TenantsDataTableProps) => {
+  const router = useRouter();
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: null,
     direction: "asc",
   });
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
+
+  const handleRunJob = (tenantId: string) => {
+    router.push(`/reports?tenant_id=${encodeURIComponent(tenantId)}`);
+  };
 
   const handleSort = (key: keyof TenantData) => {
     let direction: "asc" | "desc" = "asc";
@@ -293,12 +299,15 @@ const TenantsDataTable = ({ data }: TenantsDataTableProps) => {
                 </div>
               </div>
             </th>
+            <th className="text-center py-3 px-6 text-list font-semibold text-gray-900">
+              Action
+            </th>
           </tr>
         </thead>
         <tbody>
           {paginatedData.length === 0 ? (
             <tr>
-              <td colSpan={5} className="text-center py-8 text-gray-500">
+              <td colSpan={6} className="text-center py-8 text-gray-500">
                 No data available
               </td>
             </tr>
@@ -320,6 +329,15 @@ const TenantsDataTable = ({ data }: TenantsDataTableProps) => {
                   >
                     {formatStatus(row.status)}
                   </span>
+                </td>
+                <td className="py-4 px-6 text-center">
+                  <button
+                    onClick={() => handleRunJob(row.id)}
+                    className="px-4 py-2 bg-sophos-blue text-white rounded-md font-medium hover:bg-blue-600 transition-colors"
+                    aria-label={`Run job for tenant ${row.id}`}
+                  >
+                    Run Job
+                  </button>
                 </td>
               </tr>
             ))

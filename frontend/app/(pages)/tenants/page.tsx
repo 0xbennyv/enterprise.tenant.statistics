@@ -24,7 +24,7 @@ type TenantData = {
 
 export default function TenantsPage() {
   const pathname = usePathname();
-  const activeItem = pathname === "/tenants" ? "tenants" : "exports";
+  const activeItem = pathname === "/tenants" ? "tenants" : "reports";
   const { isCollapsed } = useSidebar();
   const [tableData, setTableData] = useState<TenantData[]>([]);
   const [isLoading, setIsLoading] = useState(true);

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../contexts/SidebarContext";
 
-type NavItem = "tenants" | "exports";
+type NavItem = "tenants" | "reports";
 
 type SideNavProps = {
   activeItem?: NavItem;
@@ -15,7 +15,7 @@ const SideNav = ({ activeItem }: SideNavProps) => {
   const pathname = usePathname();
 
   // Determine active item from pathname if not provided
-  const currentActiveItem = activeItem || (pathname === "/tenants" ? "tenants" : pathname === "/exports" ? "exports" : "exports");
+  const currentActiveItem = activeItem || (pathname === "/tenants" ? "tenants" : pathname === "/reports" ? "reports" : "reports");
 
   return (
     <aside
@@ -60,13 +60,13 @@ const SideNav = ({ activeItem }: SideNavProps) => {
           <ul className="space-y-1">
             <li>
               <Link
-                href="/exports"
-                className={`w-full flex items-center ${isCollapsed ? "justify-center px-0" : "gap-3 px-4"} py-3 rounded-md transition-colors focus:outline-none ${currentActiveItem === "exports"
+                href="/reports"
+                className={`w-full flex items-center ${isCollapsed ? "justify-center px-0" : "gap-3 px-4"} py-3 rounded-md transition-colors focus:outline-none ${currentActiveItem === "reports"
                   ? "bg-blue-600 text-white"
                   : "text-gray-300 hover:bg-gray-700"
                   }`}
-                aria-label="View Exports"
-                aria-current={currentActiveItem === "exports" ? "page" : undefined}
+                aria-label="View Reports"
+                aria-current={currentActiveItem === "reports" ? "page" : undefined}
                 tabIndex={0}
               >
                 <svg
@@ -83,7 +83,7 @@ const SideNav = ({ activeItem }: SideNavProps) => {
                   />
                 </svg>
                 {!isCollapsed && (
-                  <span className="text-sm font-medium">View Exports</span>
+                  <span className="text-sm font-medium">View Reports</span>
                 )}
               </Link>
             </li>
