@@ -7,7 +7,7 @@ from app.workers.telemetry_export import run_export
 from rq import get_current_job
 
 
-def run_export_sync(date_from: str, date_to: str, tenant_id: str | None):
+def run_export_sync(date_from: str, date_to: str, tenant_id: str | None = None):
     """
     Sync wrapper for RQ to run async export job.
     """
