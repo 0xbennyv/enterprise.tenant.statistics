@@ -175,10 +175,11 @@ async def get_export_status(job_id: str, db: AsyncSession = Depends(get_db)):
 async def cancel_export(job_id: str, db: AsyncSession = Depends(get_db)):
     """
     Cancel an export job.
-    - Queued → removed immediately
-    - Running → cooperative cancel (DB status checked by worker)
-    - Missing → treated as cancelled
+    - Queued: removed immediately
+    - Running: cooperative cancel (worker checks DB)
+    - Missing: treated as cancelled
     """
+    # Fetch job from DB
     result = await db.execute(
         ExportJob.__table__.select().where(
             ExportJob.job_id == job_id,
@@ -186,34 +187,51 @@ async def cancel_export(job_id: str, db: AsyncSession = Depends(get_db)):
         )
     )
     job_row = result.first()
-
     if not job_row:
         raise HTTPException(status_code=404, detail="Job not found or not cancellable")
-    
-    # Attempt to fetch the RQ job
+
+    # Attempt to fetch RQ job
     try:
         rq_job = Job.fetch(job_id, connection=telemetry_queue.connection)
     except NoSuchJobError:
         rq_job = None
 
     if rq_job:
-        try:
-            if rq_job.get_status() == "queued" or rq_job.get_status() == "started":
-                # Job is queued/running → remove immediately
-                telemetry_queue.remove(job_id)
-        except:
-            # All other states
+        status = rq_job.get_status()
+        if status == "queued":
+            # Remove immediately
+            telemetry_queue.remove(job_id)
+            job = await update_job_status(
+                db,
+                job_id,
+                new_status="cancelled",
+                progress={"stage": "Cancelled"},
+            )
+        elif status == "started":
+            # Running: cooperative cancel
+            job = await update_job_status(
+                db,
+                job_id,
+                new_status="cancelling",
+                progress={"stage": "Cancelling..."},
+            )
+        else:
+            # Other states cannot cancel
             raise HTTPException(
                 status_code=409,
-                detail=f"Cannot cancel job in state: {rq_job.get_status()}",
+                detail=f"Cannot cancel job in state: {status}",
             )
-    await update_job_status(
-        db,
-        job_id,
-        new_status="cancelled",
-        progress={"stage": "Cancelled"},
-    )
-    return {"status": "cancelled"}
+    else:
+        # Job missing in queue: treat as cancelled
+        job = await update_job_status(
+            db,
+            job_id,
+            new_status="cancelled",
+            progress={"stage": "Cancelled"},
+        )
+    await db.commit()
+    return job
+
 
 @router.get("/{job_id}/download")
 async def download_export(job_id: str, db: AsyncSession = Depends(get_db)):

@@ -48,7 +48,8 @@ async def reconcile_jobs():
 
 async def _reconcile_single_job(job, db, redis_conn):
     """
-    Reconcile one job safely.
+    Deterministic, resurrection-safe reconciliation.
+    DB is authoritative.
     """
 
     try:
@@ -65,18 +66,30 @@ async def _reconcile_single_job(job, db, redis_conn):
         rq_status,
     )
 
-    # --------------------------------------------------
-    # Reset stale running jobs on restart
-    # --------------------------------------------------
+    # ==========================================================
+    # HARD TERMINAL GUARD
+    # ==========================================================
+    if job.status in ["cancelled", "completed"]:
+        logger.info(
+            "Skipping terminal job %s (%s)",
+            job.job_id,
+            job.status,
+        )
+        return
+
+    # ==========================================================
+    # CRASH RECOVERY: Docker killed while running
+    # ==========================================================
     if job.status == "running" and rq_status == "missing":
         logger.warning(
-            "Job %s was marked running in DB but missing in RQ → resetting to queued and re-enqueueing",
+            "Job %s was running but missing in RQ. Requeueing (crash recovery)",
             job.job_id,
         )
+
         job.status = "queued"
         job.error = None
         await db.commit()
-        # continue with reconciliation logic
+
         telemetry_queue.enqueue(
             run_export_sync,
             job.date_from.isoformat(),
@@ -87,44 +100,34 @@ async def _reconcile_single_job(job, db, redis_conn):
         )
         return
 
-    # --------------------------------------------------
-    # CASE 1: Job missing in RQ
-    # --------------------------------------------------
-    if rq_status == "missing":
+    # ==========================================================
+    # QUEUED but missing in Redis. Redis restart recovery
+    # ==========================================================
+    if job.status == "queued" and rq_status == "missing":
+        logger.warning(
+            "Queued job %s missing in Redis. Requeueing",
+            job.job_id,
+        )
 
-        if job.status in ["queued", "failed"]:
-            logger.warning("Re-enqueueing missing job %s", job.job_id)
-
-            telemetry_queue.enqueue(
-                run_export_sync,
-                job.date_from.isoformat(),
-                job.date_to.isoformat(),
-                job.tenant_id,
-                job_timeout=7200,
-                job_id=job.job_id,
-            )
-
-        elif job.status == "running":
-            # Worker likely died mid-execution
-            logger.warning(
-                "Job %s was running but missing in RQ → marking failed",
-                job.job_id,
-            )
-            job.status = "failed"
-            job.error = "Worker crashed or Redis restarted"
-            await db.commit()
-
+        telemetry_queue.enqueue(
+            run_export_sync,
+            job.date_from.isoformat(),
+            job.date_to.isoformat(),
+            job.tenant_id,
+            job_timeout=7200,
+            job_id=job.job_id,
+        )
         return
 
-    # --------------------------------------------------
-    # CASE 2: RQ says failed
-    # --------------------------------------------------
+    # ==========================================================
+    # RQ FAILED
+    # ==========================================================
     if rq_status == "failed":
 
-        if job.status in ["queued", "running", "failed"]:
+        # Only retry if DB explicitly says failed
+        if job.status == "failed":
             logger.warning(
-                "RQ failed but DB says %s → requeueing %s",
-                job.status,
+                "Retrying explicitly failed job %s",
                 job.job_id,
             )
 
@@ -136,21 +139,26 @@ async def _reconcile_single_job(job, db, redis_conn):
                 job.error = None
                 await db.commit()
             except InvalidJobOperation:
-                logger.warning(
-                    "Race condition while requeueing %s",
-                    job.job_id,
-                )
+                logger.warning("Race while requeueing %s", job.job_id)
+
+        else:
+            logger.info(
+                "RQ failed but DB=%s. not requeueing %s",
+                job.status,
+                job.job_id,
+            )
 
         return
 
-    # --------------------------------------------------
-    # CASE 3: RQ says started
-    # --------------------------------------------------
+    # ==========================================================
+    # RQ STARTED
+    # ==========================================================
     if rq_status == "started":
 
-        if job.status != "running":
+        # Only allow transition to running from queued
+        if job.status == "queued":
             logger.info(
-                "Updating DB → running for job %s",
+                "Updating DB. running for job %s",
                 job.job_id,
             )
             job.status = "running"
@@ -158,14 +166,15 @@ async def _reconcile_single_job(job, db, redis_conn):
 
         return
 
-    # --------------------------------------------------
-    # CASE 4: RQ says finished
-    # --------------------------------------------------
+    # ==========================================================
+    # RQ FINISHED
+    # ==========================================================
     if rq_status == "finished":
 
-        if job.status != "completed":
+        # Only auto-complete if DB was running
+        if job.status == "running":
             logger.info(
-                "Updating DB → completed for job %s",
+                "Updating DB. completed for job %s",
                 job.job_id,
             )
             job.status = "completed"
@@ -174,14 +183,15 @@ async def _reconcile_single_job(job, db, redis_conn):
 
         return
 
-    # --------------------------------------------------
-    # CASE 5: RQ says queued
-    # --------------------------------------------------
+    # ==========================================================
+    # RQ QUEUED
+    # ==========================================================
     if rq_status == "queued":
 
-        if job.status != "queued":
+        if job.status == "running":
+            # Worker restarted mid-transition
             logger.info(
-                "Updating DB → queued for job %s",
+                "Correcting DB running. queued for job %s",
                 job.job_id,
             )
             job.status = "queued"

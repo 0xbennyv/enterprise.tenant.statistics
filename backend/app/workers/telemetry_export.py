@@ -63,10 +63,35 @@ async def run_export(job_id: str, date_from: str, date_to: str, tenant_id: str |
             job = result.first()
             return bool(job and job._mapping["status"] == "cancelling")
 
+    async def should_abort_before_start() -> bool:
+        """
+        Prevent resurrection of cancelled/cancelling jobs.
+        """
+        from app.core.database import get_worker_db
+
+        async with get_worker_db() as db:
+            result = await db.execute(
+                ExportJob.__table__.select().where(
+                    ExportJob.job_id == job_id
+                )
+            )
+            job = result.first()
+            if not job:
+                return True
+
+            current_status = job._mapping["status"]
+
+            return current_status in ["cancelled", "cancelling"]
+
     # ───────────────────── job execution ──────────────────────
 
     try:
-        # move job → running
+        # HARD GUARD: prevent resurrection
+        if await should_abort_before_start():
+            print(f"[EXPORT] Job {job_id} aborted before start (cancelled/cancelling)")
+            return
+        
+        # move job to running
         await set_status(
             job_id=job_id,
             status="running", 
@@ -129,12 +154,9 @@ async def run_export(job_id: str, date_from: str, date_to: str, tenant_id: str |
         # run export
         file_path = await service.export_to_excel(date_from_dt, date_to_dt, tenant_id)
 
-        if not file_path:
-            await set_status(
-                job_id=job_id,
-                status="cancelled",
-                progress={"stage": "Cancelled"},
-            )
+        if file_path is None or await is_cancelled():
+            # job cancelled mid-run
+            await set_status(job_id, status="cancelled", progress={"stage": "Cancelled"})
             print(f"[EXPORT] Job {job_id} CANCELLED")
             return
 
