@@ -104,6 +104,10 @@ const DatePickerCard = ({ onSuccess, initialTenantId }: DatePickerCardProps) => 
       // Refresh table data if callback provided
       if (onSuccess) {
         onSuccess();
+        // Additional GET after 1.5 seconds to pick up job status
+        setTimeout(() => {
+          onSuccess();
+        }, 1500);
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "An error occurred");

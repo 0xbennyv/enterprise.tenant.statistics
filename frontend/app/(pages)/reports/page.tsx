@@ -31,19 +31,32 @@ type TableData = {
   downloadUrl?: string;
   dateFrom?: string;
   dateTo?: string;
+  rawDateFrom?: string;
+  rawDateTo?: string;
 };
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
   const options: Intl.DateTimeFormatOptions = {
     year: "numeric",
-    month: "long",
+    month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
   };
   return date.toLocaleString("en-US", options);
+};
+
+/** Date only, e.g. "Feb 11, 2026" (no time). */
+const formatDateOnly = (dateString: string): string => {
+  const [y, m, d] = dateString.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 };
 
 function ReportsPageContent() {
@@ -79,8 +92,10 @@ function ReportsPageContent() {
           createdAt: formatDate(item.created_at),
           status: item.status,
           downloadUrl: item.file_path || undefined,
-          dateFrom: item.date_from,
-          dateTo: item.date_to,
+          dateFrom: item.date_from ? formatDateOnly(item.date_from) : undefined,
+          dateTo: item.date_to ? formatDateOnly(item.date_to) : undefined,
+          rawDateFrom: item.date_from ?? undefined,
+          rawDateTo: item.date_to ?? undefined,
         })
       );
 
