@@ -310,13 +310,13 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
           <tr className="border-b border-gray-200">
             <th
               className="text-left py-3 px-6 text-list font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
-              onClick={() => handleSort("jobId")}
+              onClick={() => handleSort("dateFrom")}
             >
               <div className="flex items-center gap-2">
-                Job ID
+                Date From
                 <div className="flex flex-col">
                   <svg
-                    className={`w-3 h-3 ${sortConfig.key === "jobId" && sortConfig.direction === "asc"
+                    className={`w-3 h-3 ${sortConfig.key === "dateFrom" && sortConfig.direction === "asc"
                       ? "text-sophos-blue"
                       : "text-gray-400"
                       }`}
@@ -326,7 +326,37 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
                     <path d="M5 12l5-5 5 5H5z" />
                   </svg>
                   <svg
-                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "jobId" && sortConfig.direction === "desc"
+                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "dateFrom" && sortConfig.direction === "desc"
+                      ? "text-sophos-blue"
+                      : "text-gray-400"
+                      }`}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M5 8l5 5 5-5H5z" />
+                  </svg>
+                </div>
+              </div>
+            </th>
+            <th
+              className="text-left py-3 px-6 text-list font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
+              onClick={() => handleSort("dateTo")}
+            >
+              <div className="flex items-center gap-2">
+                Date To
+                <div className="flex flex-col">
+                  <svg
+                    className={`w-3 h-3 ${sortConfig.key === "dateTo" && sortConfig.direction === "asc"
+                      ? "text-sophos-blue"
+                      : "text-gray-400"
+                      }`}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M5 12l5-5 5 5H5z" />
+                  </svg>
+                  <svg
+                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "dateTo" && sortConfig.direction === "desc"
                       ? "text-sophos-blue"
                       : "text-gray-400"
                       }`}
@@ -400,66 +430,6 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
             </th>
             <th
               className="text-left py-3 px-6 text-list font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
-              onClick={() => handleSort("dateFrom")}
-            >
-              <div className="flex items-center gap-2">
-                Date From
-                <div className="flex flex-col">
-                  <svg
-                    className={`w-3 h-3 ${sortConfig.key === "dateFrom" && sortConfig.direction === "asc"
-                      ? "text-sophos-blue"
-                      : "text-gray-400"
-                      }`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M5 12l5-5 5 5H5z" />
-                  </svg>
-                  <svg
-                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "dateFrom" && sortConfig.direction === "desc"
-                      ? "text-sophos-blue"
-                      : "text-gray-400"
-                      }`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M5 8l5 5 5-5H5z" />
-                  </svg>
-                </div>
-              </div>
-            </th>
-            <th
-              className="text-left py-3 px-6 text-list font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
-              onClick={() => handleSort("dateTo")}
-            >
-              <div className="flex items-center gap-2">
-                Date To
-                <div className="flex flex-col">
-                  <svg
-                    className={`w-3 h-3 ${sortConfig.key === "dateTo" && sortConfig.direction === "asc"
-                      ? "text-sophos-blue"
-                      : "text-gray-400"
-                      }`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M5 12l5-5 5 5H5z" />
-                  </svg>
-                  <svg
-                    className={`w-3 h-3 -mt-1 ${sortConfig.key === "dateTo" && sortConfig.direction === "desc"
-                      ? "text-sophos-blue"
-                      : "text-gray-400"
-                      }`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M5 8l5 5 5-5H5z" />
-                  </svg>
-                </div>
-              </div>
-            </th>
-            <th
-              className="text-left py-3 px-6 text-list font-semibold text-gray-900 cursor-pointer hover:bg-gray-50"
               onClick={() => handleSort("status")}
             >
               <div className="flex items-center gap-2">
@@ -489,14 +459,14 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
               </div>
             </th>
             <th className="text-center py-3 px-6 text-list font-semibold text-gray-900">
-              Action
+              Actions
             </th>
           </tr>
         </thead>
         <tbody>
           {paginatedData.length === 0 ? (
             <tr>
-              <td colSpan={7} className="text-center py-8 text-gray-500">
+              <td colSpan={6} className="text-center py-8 text-gray-500">
                 No data available
               </td>
             </tr>
@@ -506,19 +476,8 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
                 key={row.jobId}
                 className="border-b border-gray-200 hover:bg-gray-50 transition-colors"
               >
-                <td className="py-4 px-6 max-w-48">
-                  <span
-                    className="block truncate"
-                    {...((row.jobId?.length ?? 0) > MAX_ID_LENGTH
-                      ? {
-                          "data-tooltip-id": "job-id-tooltip",
-                          "data-tooltip-content": row.jobId,
-                        }
-                      : {})}
-                  >
-                    {truncateWithEllipsis(row.jobId, MAX_ID_LENGTH).display}
-                  </span>
-                </td>
+                <td className="py-4 px-6">{row.dateFrom ?? "-"}</td>
+                <td className="py-4 px-6">{row.dateTo ?? "-"}</td>
                 <td className="py-4 px-6 max-w-48">
                   <span
                     className="block truncate"
@@ -535,8 +494,6 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
                   </span>
                 </td>
                 <td className="py-4 px-6 ">{row.createdAt} (UTC)</td>
-                <td className="py-4 px-6">{row.dateFrom ?? "-"}</td>
-                <td className="py-4 px-6">{row.dateTo ?? "-"}</td>
                 <td className="py-4 px-6">
                   <span
                     className={`inline-block px-3 py-1 rounded-full text-ps font-semibold ${getStatusBadgeClass(
@@ -646,7 +603,6 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
         onCancel={handleDeleteCancel}
       />
 
-      <Tooltip id="job-id-tooltip" clickable />
       <Tooltip id="tenant-id-tooltip" clickable />
     </div>
   );
