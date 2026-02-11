@@ -73,7 +73,7 @@ async def export_telemetry(
             tenant_id=tenant_id,
             status=job._status,
             progress={
-                "stage": "queued",
+                "stage": "Queued",
             },
         )
     )
@@ -211,7 +211,7 @@ async def cancel_export(job_id: str, db: AsyncSession = Depends(get_db)):
         db,
         job_id,
         new_status="cancelled",
-        progress={"stage": "cancelled"},
+        progress={"stage": "Cancelled"},
     )
     return {"status": "cancelled"}
 

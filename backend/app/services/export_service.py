@@ -50,7 +50,7 @@ class TelemetryExportService:
         """
 
         # Collect telemetry
-        await self.progress_cb({"stage": "collecting_alerts", "percent": 5})
+        await self.progress_cb({"stage": "Collecting Number of Security Incidents", "percent": 5})
         alerts = await self.alerts.collect(date_from, date_to, tenant_id)
 
         if await self.is_cancelled_cb():
@@ -64,27 +64,27 @@ class TelemetryExportService:
             date_to, time.min, tzinfo=timezone.utc
         )
 
-        await self.progress_cb({"stage": "collecting_sla", "percent": 15})
+        await self.progress_cb({"stage": "Collecting Cases Resolved within an SLA", "percent": 15})
         sla = await self.sla.collect_sla_metrics(created_after, created_before, tenant_id)
         if await self.is_cancelled_cb():
             return None
 
-        await self.progress_cb({"stage": "collecting_mttd", "percent": 25})
+        await self.progress_cb({"stage": "Collecting Mean Time to Detect", "percent": 25})
         mttd = await self.mttd.collect_mttd(date_from, date_to, tenant_id)
         if await self.is_cancelled_cb():
             return None
 
-        await self.progress_cb({"stage": "collecting_mtta", "percent": 35})
+        await self.progress_cb({"stage": "Collecting Mean Time to Acknowledge", "percent": 35})
         mtta = await self.mtta.collect_mtta(created_after, created_before, tenant_id)
         if await self.is_cancelled_cb():
             return None
 
-        await self.progress_cb({"stage": "collecting_mttr", "percent": 45})
+        await self.progress_cb({"stage": "Collecting Mean Time to Recover", "percent": 45})
         mttr = await self.mttr.collect_mttr(created_after, created_before, tenant_id)
         if await self.is_cancelled_cb():
             return None
 
-        await self.progress_cb({"stage": "collecting_endpoint_health", "percent": 55})
+        await self.progress_cb({"stage": "Collecting Endpoint Health", "percent": 55})
         endpoint = await self.endpoint_health.collect_endpoint_health(tenant_id=tenant_id)
         if await self.is_cancelled_cb():
             return None
@@ -94,7 +94,7 @@ class TelemetryExportService:
         wb.remove(wb.active)
 
         if not tenant_id:
-            await self.progress_cb({"stage": "building_all_tenants_sheet", "percent": 60})
+            await self.progress_cb({"stage": "Building All Tenants Sheet", "percent": 60})
             build_all_tenants_sheet(wb, alerts, sla, mttd, mtta, mttr, endpoint)
             if await self.is_cancelled_cb():
                 return None
@@ -105,7 +105,7 @@ class TelemetryExportService:
             if await self.is_cancelled_cb():
                 return None
             await self.progress_cb(
-                {"stage": f"building_sheet_{tenant}", "percent": 60 + int(30 * idx / total_tenants)}
+                {"stage": f"Building Sheet {tenant}", "percent": 60 + int(30 * idx / total_tenants)}
             )
             build_tenant_sheet(wb, tenant, alerts, sla, mttd, mtta, mttr, endpoint)
 
@@ -118,8 +118,8 @@ class TelemetryExportService:
         else:
             file_path = EXPORT_DIR / file_name
 
-        await self.progress_cb({"stage": "saving_file", "percent": 95})
+        await self.progress_cb({"stage": "Saving File", "percent": 95})
         wb.save(file_path)
-        await self.progress_cb({"stage": "done", "percent": 100})
+        await self.progress_cb({"stage": "Done", "percent": 100})
 
         return str(file_path)

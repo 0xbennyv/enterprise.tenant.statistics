@@ -70,7 +70,7 @@ async def run_export(job_id: str, date_from: str, date_to: str, tenant_id: str |
         await set_status(
             job_id=job_id,
             status="running", 
-            progress={"stage": "starting"}
+            progress={"stage": "Starting"}
         )
 
         # create all async clients INSIDE coroutine
@@ -133,7 +133,7 @@ async def run_export(job_id: str, date_from: str, date_to: str, tenant_id: str |
             await set_status(
                 job_id=job_id,
                 status="cancelled",
-                progress={"stage": "cancelled"},
+                progress={"stage": "Cancelled"},
             )
             print(f"[EXPORT] Job {job_id} CANCELLED")
             return
@@ -142,7 +142,7 @@ async def run_export(job_id: str, date_from: str, date_to: str, tenant_id: str |
         await set_status(
             job_id=job_id,
             status="completed",
-            progress={"stage": "done", "percent": 100},
+            progress={"stage": "Done", "percent": 100},
             error=None,
             file_path=file_path,
         )
