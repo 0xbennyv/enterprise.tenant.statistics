@@ -3,13 +3,15 @@ from pathlib import Path
 from openpyxl import Workbook
 from app.services.alert_service import AlertTelemetryService
 from app.services.case_service import CaseTelemetryService
-from app.services.mttd_service import MTTDService
+# from app.services.mttd_service import MTTDService
+from app.services.mttd_service2 import MTTDService2
 from app.services.mtta_service import MTTAService
 from app.services.mttr_service import MTTRService
 from app.services.endpoint_health_service import EndpointHealthService
 from app.exporters.excel.all_tenants_sheet import build_all_tenants_sheet
 from app.exporters.excel.tenant_sheet import build_tenant_sheet
 import os
+import time as time2
 
 EXPORT_DIR = Path("/code/exports")  # <-- Docker-mounted volume for persistence
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -20,7 +22,8 @@ class TelemetryExportService:
         self,
         alert_service: AlertTelemetryService,
         case_sla_service: CaseTelemetryService,
-        mttd_service: MTTDService,
+        # mttd_service: MTTDService,
+        mttd_service2: MTTDService2,
         mtta_service: MTTAService,
         mttr_service: MTTRService,
         endpoint_health_service: EndpointHealthService,
@@ -29,7 +32,8 @@ class TelemetryExportService:
     ):
         self.alerts = alert_service
         self.sla = case_sla_service
-        self.mttd = mttd_service
+        # self.mttd = mttd_service
+        self.mttd2 = mttd_service2
         self.mtta = mtta_service
         self.mttr = mttr_service
         self.endpoint_health = endpoint_health_service
@@ -69,11 +73,23 @@ class TelemetryExportService:
         if await self.is_cancelled_cb():
             return None
 
-        await self.progress_cb({"stage": "Collecting Mean Time to Detect", "percent": 25})
-        mttd = await self.mttd.collect_mttd(date_from, date_to, tenant_id)
+        start_time = time2.perf_counter()
+        await self.progress_cb({"stage": "Collecting MTTD 2", "percent": 25})
+        mttd2 = await self.mttd2.collect_mttd(date_from, date_to, tenant_id)
         if await self.is_cancelled_cb():
             return None
+        process_time = round(time2.perf_counter() - start_time, 3)  # seconds
+        print("MTTD2 TIME:", process_time)
 
+        # ORIG MTTD
+        # start_time = time2.perf_counter()
+        # await self.progress_cb({"stage": "Collecting Mean Time to Detect", "percent": 25})
+        # mttd = await self.mttd.collect_mttd(date_from, date_to, tenant_id)
+        # if await self.is_cancelled_cb():
+        #     return None
+        # process_time = round(time2.perf_counter() - start_time, 3)  # seconds
+        # print("MTTD ORIG TIME:", process_time)
+        
         await self.progress_cb({"stage": "Collecting Mean Time to Acknowledge", "percent": 35})
         mtta = await self.mtta.collect_mtta(created_after, created_before, tenant_id)
         if await self.is_cancelled_cb():
@@ -95,7 +111,8 @@ class TelemetryExportService:
 
         if not tenant_id:
             await self.progress_cb({"stage": "Building All Tenants Sheet", "percent": 60})
-            build_all_tenants_sheet(wb, alerts, sla, mttd, mtta, mttr, endpoint)
+            # build_all_tenants_sheet(wb, alerts, sla, mttd, mttd2, mtta, mttr, endpoint)
+            build_all_tenants_sheet(wb, alerts, sla, mttd2, mtta, mttr, endpoint)
             if await self.is_cancelled_cb():
                 return None
 
@@ -107,7 +124,8 @@ class TelemetryExportService:
             await self.progress_cb(
                 {"stage": f"Building Sheet {tenant}", "percent": 60 + int(30 * idx / total_tenants)}
             )
-            build_tenant_sheet(wb, tenant, alerts, sla, mttd, mtta, mttr, endpoint)
+            # build_tenant_sheet(wb, tenant, alerts, sla, mttd, mttd2, mtta, mttr, endpoint)
+            build_tenant_sheet(wb, tenant, alerts, sla, mttd2, mtta, mttr, endpoint)
 
         # Save file
         file_name = f"{date_from}_to_{date_to}.xlsx"

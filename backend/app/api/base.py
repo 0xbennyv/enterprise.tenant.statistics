@@ -33,9 +33,10 @@ class BaseApiClient:
 
         if response.status_code >= 500:
             logger.warning(
-                "Server error %s calling %s",
+                "Server error %s calling %s: %s",
                 response.status_code,
                 url,
+                response.json()
             )
             return {"_error": "server_error"}
 

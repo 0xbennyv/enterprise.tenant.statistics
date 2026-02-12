@@ -77,3 +77,26 @@ class CaseDetectionsApiClient(BaseApiClient):
         )
 
         return all_items
+
+    async def get_case_detection(
+        self,
+        api_host: str,
+        tenant_id: str,
+        case_id: str,
+        detection_id: str
+    ) -> List[Dict[str, Any]]:
+        url = f"{api_host}/cases/v1/cases/{case_id}/detections/{detection_id}"
+
+        response = await self.get(
+            url=url,
+            headers={"X-Tenant-ID": tenant_id}
+        )
+
+        # logger.info(
+        #     "[MTTD] Case %s (tenant=%s): initial detection fetched = %d",
+        #     case_id,
+        #     tenant_id,
+        #     response,
+        # )
+
+        return response

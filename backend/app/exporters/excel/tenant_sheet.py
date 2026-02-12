@@ -9,7 +9,8 @@ def build_tenant_sheet(
     tenant,
     alerts,
     sla,
-    mttd,
+    # mttd,
+    mttd2,
     mtta,
     mttr,
     endpoint,
@@ -74,12 +75,20 @@ def build_tenant_sheet(
     ws.append(["Total Incidents", tenant_sla["total_incidents"]])
     # END SLA
 
-    mttd_cases = next(
-        i for i in mttd["incidents"] if i["tenantId"] == tenant["tenantId"]
+    # MTTD
+    # mttd_cases = next(
+    #     i for i in mttd["incidents"] if i["tenantId"] == tenant["tenantId"]
+    # )
+    # ws.append([])
+    # ws.append(["Mean Time to Detect (seconds)", mttd_cases["mttd_seconds"]])
+    # ws.append(["Total Detections", mttd_cases["total_detections"]])
+
+    mttd_cases2 = next(
+        i for i in mttd2["incidents"] if i["tenantId"] == tenant["tenantId"]
     )
     ws.append([])
-    ws.append(["Mean Time to Detect (seconds)", mttd_cases["mttd_seconds"]])
-    ws.append(["Total Detections", mttd_cases["total_detections"]])
+    ws.append(["Mean Time to Detect (seconds)", mttd_cases2["mttd_seconds"]])
+    ws.append(["Total Detections", mttd_cases2["total_detections"]])
 
     mtta_cases = next(
         i for i in mtta["incidents"] if i["tenantId"] == tenant["tenantId"]

@@ -6,7 +6,7 @@ from app.models.export_job import ExportJob
 
 ALLOWED_TRANSITIONS = {
     "queued": ["running", "cancelled", "failed"],
-    "running": ["completed", "failed", "cancelling"],
+    "running": ["queued", "completed", "failed", "cancelling"],
     "cancelling": ["cancelled"],
     "completed": [],
     "failed": ["queued", "running"],

@@ -107,7 +107,8 @@ async def run_export(job_id: str, date_from: str, date_to: str, tenant_id: str |
         from app.api.health_check_api import HealthCheckApiClient
         from app.services.alert_service import AlertTelemetryService
         from app.services.case_service import CaseTelemetryService
-        from app.services.mttd_service import MTTDService
+        # from app.services.mttd_service import MTTDService
+        from app.services.mttd_service2 import MTTDService2
         from app.services.mtta_service import MTTAService
         from app.services.mttr_service import MTTRService
         from app.services.endpoint_health_service import (
@@ -125,7 +126,14 @@ async def run_export(job_id: str, date_from: str, date_to: str, tenant_id: str |
         case_service = CaseTelemetryService(org_client, cases_client)
 
         detections_client = CaseDetectionsApiClient(token_manager)
-        mttd_service = MTTDService(
+        # MTTD
+        # mttd_service = MTTDService(
+        #     org_client=org_client,
+        #     cases_client=cases_client,
+        #     detections_client=detections_client,
+        # )
+
+        mttd_service2 = MTTDService2(
             org_client=org_client,
             cases_client=cases_client,
             detections_client=detections_client,
@@ -143,7 +151,8 @@ async def run_export(job_id: str, date_from: str, date_to: str, tenant_id: str |
         service = TelemetryExportService(
             alert_service=alerts_service,
             case_sla_service=case_service,
-            mttd_service=mttd_service,
+            # mttd_service=mttd_service,
+            mttd_service2=mttd_service2,
             mtta_service=mtta_service,
             mttr_service=mttr_service,
             endpoint_health_service=endpoint_health_service,

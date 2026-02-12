@@ -7,15 +7,13 @@ def build_all_tenants_sheet(
     wb: Workbook,
     alerts,
     sla,
-    mttd,
+    # mttd,
+    mttd2,
     mtta,
     mttr,
     endpoint,
 ):
     ws = wb.create_sheet("All Tenants")
-    # print("Mttd:", mttd)
-
-    
 
     # ALERTS
     ws.append(["Number of Security Incidents"])
@@ -58,9 +56,14 @@ def build_all_tenants_sheet(
     # END SLA
 
     # MTTD
+    # ws.append([])
+    # ws.append(["Mean Time to Detect (seconds)", mttd["all_tenants_mttd_seconds"]])
+    # ws.append(["Total Detections", mttd["total_detections"]])
+
+    # MTTD2
     ws.append([])
-    ws.append(["Mean Time to Detect (seconds)", mttd["all_tenants_mttd_seconds"]])
-    ws.append(["Total Detections", mttd["total_detections"]])
+    ws.append(["Mean Time to Detect (seconds)", mttd2["all_tenants_mttd_seconds"]])
+    ws.append(["Total Detections", mttd2["total_detections"]])
 
     # MTTA
     ws.append([])
