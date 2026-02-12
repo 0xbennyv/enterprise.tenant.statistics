@@ -33,6 +33,10 @@ type TableData = {
   dateTo?: string;
   rawDateFrom?: string;
   rawDateTo?: string;
+  progress?: {
+    stage: string;
+    percent: number;
+  };
 };
 
 const formatDate = (dateString: string): string => {
@@ -96,6 +100,7 @@ function ReportsPageContent() {
           dateTo: item.date_to ? formatDateOnly(item.date_to) : undefined,
           rawDateFrom: item.date_from ?? undefined,
           rawDateTo: item.date_to ?? undefined,
+          progress: item.progress,
         })
       );
 
@@ -146,7 +151,7 @@ function ReportsPageContent() {
                 ) : error ? (
                   <div className="text-center py-8 text-orange-500">{error}</div>
                 ) : (
-                  <DataTable data={tableData} onDelete={fetchTelemetryData} />
+                  <DataTable data={tableData} onDelete={fetchTelemetryData} onCancel={fetchTelemetryData} />
                 )}
               </div>
             </div>
