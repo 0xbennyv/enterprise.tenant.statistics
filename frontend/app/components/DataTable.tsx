@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "react-toastify";
 import { Tooltip } from "react-tooltip";
 import ConfirmationModal from "./ConfirmationModal";
@@ -13,6 +14,10 @@ type TableData = {
   downloadUrl?: string;
   dateFrom?: string;
   dateTo?: string;
+  progress?: {
+    stage: string;
+    percent: number;
+  };
 };
 
 type SortConfig = {
@@ -23,9 +28,10 @@ type SortConfig = {
 type DataTableProps = {
   data: TableData[];
   onDelete?: () => void;
+  onCancel?: () => void;
 };
 
-const DataTable = ({ data, onDelete }: DataTableProps) => {
+const DataTable = ({ data, onDelete, onCancel }: DataTableProps) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: null,
     direction: "asc",
@@ -34,6 +40,17 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
   const rowsPerPage = 10;
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [rowToDelete, setRowToDelete] = useState<TableData | null>(null);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [rowToCancel, setRowToCancel] = useState<TableData | null>(null);
+  const cancelRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (cancelRefreshTimeoutRef.current) {
+        clearTimeout(cancelRefreshTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSort = (key: keyof TableData) => {
     let direction: "asc" | "desc" = "asc";
@@ -139,7 +156,7 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
   const handleDeleteClick = (row: TableData) => {
     // Only allow deletion of completed, queued, or failed jobs
     if (!canDelete(row.status)) {
-      toast.error("Only completed, queued, or failed jobs can be deleted");
+      toast.error("Only completed, queued, cancelled, or failed jobs can be deleted");
       return;
     }
     setRowToDelete(row);
@@ -197,6 +214,8 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
       case "completed":
       case "done":
         return "bg-green-500 text-white";
+      case "cancelling":
+        return "bg-orange-300 text-white";
       case "cancelled":
         return "bg-orange-500 text-white";
       case "failed":
@@ -228,15 +247,73 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
 
   const canDelete = (status: string): boolean => {
     const statusLower = status.toLowerCase();
-    // Only allow deletion for completed, queued, or failed jobs
+    // Only allow deletion for completed, queued, cancelled, or failed jobs
     // Explicitly exclude running jobs
     return (
       statusLower === "completed" ||
       statusLower === "done" ||
       statusLower === "queued" ||
+      statusLower === "cancelled" ||
       statusLower === "failed" ||
       statusLower === "error"
     );
+  };
+
+  const canCancel = (status: string): boolean => {
+    const statusLower = status.toLowerCase();
+    return statusLower === "queued" || statusLower === "running";
+  };
+
+  const handleCancelClick = (row: TableData) => {
+    if (!canCancel(row.status)) return;
+    setRowToCancel(row);
+    setCancelModalOpen(true);
+  };
+
+  const handleCancelConfirm = async () => {
+    if (!rowToCancel) return;
+    try {
+      const response = await fetch(
+        `/api/telemetry/${encodeURIComponent(rowToCancel.jobId)}/cancel`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.detail || "Failed to cancel export");
+      }
+
+      toast.success("Job cancelled successfully");
+
+      setCancelModalOpen(false);
+      setRowToCancel(null);
+
+      if (onCancel) {
+        onCancel();
+        cancelRefreshTimeoutRef.current = setTimeout(() => {
+          onCancel();
+          cancelRefreshTimeoutRef.current = null;
+        }, 1500);
+      }
+    } catch (error) {
+      console.error("Cancel error:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to cancel export"
+      );
+      setCancelModalOpen(false);
+      setRowToCancel(null);
+    }
+  };
+
+  const handleCancelModalClose = () => {
+    setCancelModalOpen(false);
+    setRowToCancel(null);
   };
 
   const MAX_ID_LENGTH = 24;
@@ -496,36 +573,130 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
                 <td className="py-4 px-6 ">{row.createdAt} (UTC)</td>
                 <td className="py-4 px-6">
                   <span
-                    className={`inline-block px-3 py-1 rounded-full text-ps font-semibold ${getStatusBadgeClass(
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-ps font-semibold ${getStatusBadgeClass(
                       row.status
                     )}`}
+                    {...(row.status.toLowerCase() === "running" &&
+                    row.progress?.stage != null
+                      ? {
+                          "data-tooltip-id": "progress-stage-tooltip",
+                          "data-tooltip-content": `Stage: ${row.progress.stage}`,
+                        }
+                      : {})}
                   >
+                    {row.status.toLowerCase() === "running" && (
+                      <svg
+                        className="size-4 shrink-0 animate-spin"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        aria-hidden
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                    )}
                     {formatStatus(row.status)}
                   </span>
                 </td>
                 <td className="py-4 px-6 text-center">
                   <div className="flex items-center justify-center gap-4">
+                    {canCancel(row.status) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCancelClick(row);
+                        }}
+                        className="p-1.5 rounded transition-colors text-amber-600 hover:text-amber-700 hover:bg-amber-50 cursor-pointer"
+                        aria-label={`Cancel ${row.jobId}`}
+                        title="Cancel"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="15" y1="9" x2="9" y2="15" />
+                          <line x1="9" y1="9" x2="15" y2="15" />
+                        </svg>
+                      </button>
+                    )}
                     <button
+                      type="button"
                       onClick={() => handleDownload(row)}
                       disabled={!isCompleted(row.status)}
-                      className={`font-medium text-list transition-colors ${isCompleted(row.status)
-                        ? "text-sophos-blue hover:text-blue-600 cursor-pointer"
+                      className={`p-1.5 rounded transition-colors ${isCompleted(row.status)
+                        ? "text-sophos-blue hover:text-blue-600 hover:bg-blue-50 cursor-pointer"
                         : "text-gray-400 cursor-not-allowed opacity-50"
                         }`}
                       aria-label={`Download ${row.jobId}`}
+                      title="Download"
                     >
-                      Download
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
                     </button>
                     <button
+                      type="button"
                       onClick={() => handleDeleteClick(row)}
                       disabled={!canDelete(row.status)}
-                      className={`font-medium text-list transition-colors ${!canDelete(row.status)
+                      className={`p-1.5 rounded transition-colors ${!canDelete(row.status)
                         ? "text-gray-400 cursor-not-allowed opacity-50"
-                        : "text-red-600 hover:text-red-700 cursor-pointer"
+                        : "text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
                         }`}
                       aria-label={`Delete ${row.jobId}`}
+                      title="Delete"
                     >
-                      Delete
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        <line x1="10" y1="11" x2="10" y2="17" />
+                        <line x1="14" y1="11" x2="14" y2="17" />
+                      </svg>
                     </button>
                   </div>
                 </td>
@@ -603,7 +774,26 @@ const DataTable = ({ data, onDelete }: DataTableProps) => {
         onCancel={handleDeleteCancel}
       />
 
+    {typeof document !== "undefined" &&
+        createPortal(
+          <ConfirmationModal
+            isOpen={cancelModalOpen}
+            title="Cancel Export Job"
+            message={
+              rowToCancel
+                ? `Are you sure you want to cancel export job ${rowToCancel.jobId}? The job will be stopped and will not complete.`
+                : ""
+            }
+            confirmText="Cancel job"
+            cancelText="Keep"
+            onConfirm={handleCancelConfirm}
+            onCancel={handleCancelModalClose}
+          />,
+          document.body
+        )}
+
       <Tooltip id="tenant-id-tooltip" clickable />
+      <Tooltip id="progress-stage-tooltip" />
     </div>
   );
 };

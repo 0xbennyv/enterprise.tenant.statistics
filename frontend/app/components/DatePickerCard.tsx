@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import DatePicker from "react-datepicker";
 import { toast } from "react-toastify";
 import "react-datepicker/dist/react-datepicker.css";
@@ -11,6 +12,7 @@ type DatePickerCardProps = {
 };
 
 const DatePickerCard = ({ onSuccess, initialTenantId }: DatePickerCardProps) => {
+  const router = useRouter();
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [tenantId, setTenantId] = useState<string>("");
@@ -83,7 +85,8 @@ const DatePickerCard = ({ onSuccess, initialTenantId }: DatePickerCardProps) => 
         throw new Error(data.error || "Failed to submit request");
       }
 
-      // Clear date values on successful submission
+      // Clear path to /reports (remove query params) and clear form inputs
+      router.replace("/reports");
       setStartDate(null);
       setEndDate(null);
       setTenantId("");
