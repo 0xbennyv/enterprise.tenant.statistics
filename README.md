@@ -11,7 +11,7 @@
 ## Setup
 - Create ```.env``` file (check ```.env.sample``` for reference)
 
-     * **IMPORTANT**: To be able to download a file, you must add a value to NEXT_PUBLIC_DOWNLOAD_URL. The default is **NEXT_PUBLIC_DOWNLOAD_URL=http://localhost:5006**
+     * **IMPORTANT**: To be able to download a file, your NEXT_PUBLIC_DOWNLOAD_URL must not be empty. The default is **NEXT_PUBLIC_DOWNLOAD_URL=http://localhost:5006**
 
 - Run command: ```docker compose up --build```
 
