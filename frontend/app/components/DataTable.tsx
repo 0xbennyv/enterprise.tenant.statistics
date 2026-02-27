@@ -93,10 +93,18 @@ const DataTable = ({ data, onDelete, onCancel }: DataTableProps) => {
 
   const handleDownload = async (row: TableData) => {
     try {
-      // Get backend URL from environment variable or use localhost for development
-      const backendUrl = process.env.NEXT_PUBLIC_DOWNLOAD_URL;
+      // Use NEXT_PUBLIC_DOWNLOAD_URL when set; otherwise use current origin (protocol + hostname) with port 5006
+      const backendUrl =
+        process.env.NEXT_PUBLIC_DOWNLOAD_URL?.trim() ||
+        (typeof window !== "undefined"
+          ? `${window.location.protocol}//${window.location.hostname}:5006`
+          : "");
 
-      // Call the backend directly: http://localhost:5006/exports/{job_id}/download
+      if (!backendUrl) {
+        throw new Error("Download URL is not configured");
+      }
+
+      // Call the backend: {backendUrl}/exports/{job_id}/download
       const endpoint = `${backendUrl}/exports/${encodeURIComponent(row.jobId)}/download`;
 
       const response = await fetch(endpoint, {
