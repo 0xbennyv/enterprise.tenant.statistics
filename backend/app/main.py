@@ -63,8 +63,6 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3001",
         "http://127.0.0.1:3000",
-        "http://zautomator.matholdingsinc.com",
-        "http://zautomator.matholdingsinc.com:3001",
     ],
     # allow_credentials=True,
     # allow_methods=["*"],
