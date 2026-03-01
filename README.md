@@ -12,6 +12,8 @@
 - Create ```.env``` file (check ```.env.sample``` for reference)
 
      * **IMPORTANT**: To be able to download a file, your NEXT_PUBLIC_DOWNLOAD_URL must not be empty. The default is **NEXT_PUBLIC_DOWNLOAD_URL=http://localhost:5006**
+     * Append your frontend domain(s) to the variable **ALLOWED_ORIGINS** when deploying
+     
 
 - Run command: ```docker compose up --build```
 
