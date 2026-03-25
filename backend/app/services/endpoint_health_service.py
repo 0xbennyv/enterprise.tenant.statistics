@@ -28,7 +28,7 @@ class EndpointHealthService:
                 api_host=tenant["apiHost"],
                 tenant_id=tenant["id"],
             )
-            return tenant["id"], tenant["name"], health_check
+            return tenant["id"], tenant["showAs"], health_check
         
         results = await asyncio.gather(
             *[fetch_health_check(t) for t in tenants]

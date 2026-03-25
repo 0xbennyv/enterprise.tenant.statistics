@@ -93,10 +93,10 @@ class MTTDService2:
                     tenant["id"],
                     exc,
                 )
-                return tenant["id"], tenant["name"], []
+                return tenant["id"], tenant["showAs"], []
 
             # print("Case detection: ", detections)
-            return tenant["id"], tenant["name"], detections
+            return tenant["id"], tenant["showAs"], detections
         results = await asyncio.gather(
             *[fetch_tenant_detections(t) for t in tenants],
             return_exceptions=False,

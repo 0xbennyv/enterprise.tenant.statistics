@@ -52,7 +52,7 @@ class MTTDService:
                     # print("[MTTD] Processing case %s for tenant %s", case["id"], tenant["id"])
 
                     # FOR TESTING, LIMIT TO FIRST 5 CASES ONLY
-                    # if case_count >= 5:
+                    # if case_count >= 50:
                     #     break
                     # case_count += 1
                     
@@ -88,9 +88,9 @@ class MTTDService:
                     tenant["id"],
                     exc,
                 )
-                return tenant["id"], tenant["name"], []
+                return tenant["id"], tenant["showAs"], []
 
-            return tenant["id"], tenant["name"], detections
+            return tenant["id"], tenant["showAs"], detections
         results = await asyncio.gather(
             *[fetch_tenant_detections(t) for t in tenants],
             return_exceptions=False,

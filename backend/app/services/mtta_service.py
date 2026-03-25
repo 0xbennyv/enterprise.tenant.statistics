@@ -44,12 +44,12 @@ class MTTAService:
         #     )
 
         #     cases_by_tenant = {
-        #         (tenant_id, tenant["name"]): cases
+        #         (tenant_id, tenant["showAs"]): cases
         #         for tenant_id, tenant in [(tenant_id, tenant)]
         #     }
 
         async def fetch_cases(tenant):
-            return tenant["id"], tenant["name"],await self.cases_client.list_cases(
+            return tenant["id"], tenant["showAs"],await self.cases_client.list_cases(
                 api_host=tenant["apiHost"],
                 tenant_id=tenant["id"],
                 created_after=created_after,

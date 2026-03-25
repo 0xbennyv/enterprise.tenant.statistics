@@ -32,7 +32,7 @@ class CaseTelemetryService:
             tenants = await self.org_client.list_tenant(tenant_id=tenant_id)
 
         async def fetch_cases(tenant):
-            return tenant["id"], tenant["name"], await self.cases_client.list_cases(
+            return tenant["id"], tenant["showAs"], await self.cases_client.list_cases(
                 api_host=tenant["apiHost"],
                 tenant_id=tenant["id"],
                 # created_after=(date_from and datetime.combine(date_from, datetime.min.time())),
@@ -65,7 +65,7 @@ class CaseTelemetryService:
             tenants = await self.org_client.list_tenant(tenant_id=tenant_id)
 
         async def fetch_cases(tenant):
-            return tenant["id"], tenant["name"], await self.cases_client.list_cases(
+            return tenant["id"], tenant["showAs"], await self.cases_client.list_cases(
                 api_host=tenant["apiHost"],
                 tenant_id=tenant["id"],
                 created_after=created_after,

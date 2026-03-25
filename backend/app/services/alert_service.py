@@ -27,7 +27,7 @@ class AlertTelemetryService:
                 date_from=date_from,
                 date_to=date_to,
             )
-            return tenant["id"], tenant["name"], alerts
+            return tenant["id"], tenant["showAs"], alerts
 
         
         results = await asyncio.gather(
