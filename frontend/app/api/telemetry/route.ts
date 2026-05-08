@@ -1,5 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 
+type FastApiValidationItem = {
+  msg?: string;
+  loc?: (string | number)[];
+};
+
+const extractBackendErrorMessage = (
+  data: unknown,
+  fallback: string
+): string => {
+  if (!data || typeof data !== "object") return fallback;
+
+  const { detail, error } = data as { detail?: unknown; error?: unknown };
+
+  if (typeof detail === "string" && detail.trim()) return detail;
+
+  if (Array.isArray(detail)) {
+    const messages = (detail as FastApiValidationItem[])
+      .map((item) => {
+        if (!item || typeof item !== "object") return null;
+        const path = Array.isArray(item.loc)
+          ? item.loc.filter((p) => p !== "body" && p !== "query").join(".")
+          : "";
+        return path && item.msg ? `${path}: ${item.msg}` : item.msg ?? null;
+      })
+      .filter((msg): msg is string => Boolean(msg));
+    if (messages.length > 0) return messages.join("; ");
+  }
+
+  if (typeof error === "string" && error.trim()) return error;
+
+  return fallback;
+};
+
 export async function GET() {
   try {
     // Get backend URL from environment variable
@@ -19,7 +52,7 @@ export async function GET() {
     
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.error || "Failed to fetch telemetry data" },
+        { error: extractBackendErrorMessage(data, "Failed to fetch telemetry data") },
         { status: response.status }
       );
     }
@@ -82,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       return NextResponse.json(
-        { error: data.error || "Failed to fetch telemetry data" },
+        { error: extractBackendErrorMessage(data, "Failed to fetch telemetry data") },
         { status: response.status }
       );
     }
