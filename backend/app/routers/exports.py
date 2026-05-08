@@ -33,25 +33,39 @@ async def export_telemetry(
     date_from_new = datetime.strptime(date_from, "%Y-%m-%d").date()
     date_to_new = datetime.strptime(date_to, "%Y-%m-%d").date()
 
-    # Check if there is already a record with same date_from and date_to
-    if tenant_id:
-        exists = await db.execute(
-            ExportJob.__table__.select().where(
-                ExportJob.date_from == date_from_new,
-                ExportJob.date_to == date_to_new,
-                ExportJob.tenant_id == tenant_id
-            )
+    # Block re-submission only when an active or successful job already exists
+    # for the same (date_from, date_to, tenant_id) tuple. "failed" and
+    # "cancelled" are intentionally excluded so users can retry from the UI.
+    BLOCKING_STATUSES = ("queued", "running", "cancelling", "completed")
+
+    tenant_filter = (
+        ExportJob.tenant_id == tenant_id
+        if tenant_id
+        else ExportJob.tenant_id.is_(None)
+    )
+
+    exists = await db.execute(
+        ExportJob.__table__.select().where(
+            ExportJob.date_from == date_from_new,
+            ExportJob.date_to == date_to_new,
+            tenant_filter,
+            ExportJob.status.in_(BLOCKING_STATUSES),
         )
-    else:
-        exists = await db.execute(
-            ExportJob.__table__.select().where(
-                ExportJob.date_from == date_from_new,
-                ExportJob.date_to == date_to_new,
-                ExportJob.tenant_id == None
+    )
+    existing = exists.first()
+    if existing:
+        existing_status = existing._mapping["status"]
+        if existing_status == "completed":
+            detail = (
+                "An export for this date range has already been completed. "
+                "Delete it from the Jobs Queue to re-run."
             )
-        )
-    if exists.first():
-        raise HTTPException(status_code=404, detail="Job already exists")
+        else:
+            detail = (
+                "An export for this date range is already queued/running. "
+                "Delete it from the Jobs Queue to re-run."
+            )
+        raise HTTPException(status_code=409, detail=detail)
 
     # Enqueue RQ job (sync wrapper handles async)
     job = telemetry_queue.enqueue(
