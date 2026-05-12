@@ -33,39 +33,46 @@ async def export_telemetry(
     date_from_new = datetime.strptime(date_from, "%Y-%m-%d").date()
     date_to_new = datetime.strptime(date_to, "%Y-%m-%d").date()
 
-    # Block re-submission only when an active or successful job already exists
-    # for the same (date_from, date_to, tenant_id) tuple. "failed" and
-    # "cancelled" are intentionally excluded so users can retry from the UI.
-    BLOCKING_STATUSES = ("queued", "running", "cancelling", "completed")
+    ##
+    # Comment out the blocking check to allow multiple exports for the same date range
+    #
 
-    tenant_filter = (
-        ExportJob.tenant_id == tenant_id
-        if tenant_id
-        else ExportJob.tenant_id.is_(None)
-    )
+    # # Block re-submission only when an active or successful job already exists
+    # # for the same (date_from, date_to, tenant_id) tuple. "failed" and
+    # # "cancelled" are intentionally excluded so users can retry from the UI.
+    # BLOCKING_STATUSES = ("queued", "running", "cancelling", "completed")
 
-    exists = await db.execute(
-        ExportJob.__table__.select().where(
-            ExportJob.date_from == date_from_new,
-            ExportJob.date_to == date_to_new,
-            tenant_filter,
-            ExportJob.status.in_(BLOCKING_STATUSES),
-        )
-    )
-    existing = exists.first()
-    if existing:
-        existing_status = existing._mapping["status"]
-        if existing_status == "completed":
-            detail = (
-                "An export for this date range has already been completed. "
-                "Delete it from the Jobs Queue to re-run."
-            )
-        else:
-            detail = (
-                "An export for this date range is already queued/running. "
-                "Delete it from the Jobs Queue to re-run."
-            )
-        raise HTTPException(status_code=409, detail=detail)
+    # tenant_filter = (
+    #     ExportJob.tenant_id == tenant_id
+    #     if tenant_id
+    #     else ExportJob.tenant_id.is_(None)
+    # )
+
+    # exists = await db.execute(
+    #     ExportJob.__table__.select().where(
+    #         ExportJob.date_from == date_from_new,
+    #         ExportJob.date_to == date_to_new,
+    #         tenant_filter,
+    #         ExportJob.status.in_(BLOCKING_STATUSES),
+    #     )
+    # )
+    # existing = exists.first()
+    # if existing:
+    #     existing_status = existing._mapping["status"]
+    #     if existing_status == "completed":
+    #         detail = (
+    #             "An export for this date range has already been completed. "
+    #             "Delete it from the Jobs Queue to re-run."
+    #         )
+    #     else:
+    #         detail = (
+    #             "An export for this date range is already queued/running. "
+    #             "Delete it from the Jobs Queue to re-run."
+    #         )
+    #     raise HTTPException(status_code=409, detail=detail)
+
+    # End
+    ##
 
     # Enqueue RQ job (sync wrapper handles async)
     job = telemetry_queue.enqueue(
